@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, KeyboardEvent } from "react";
 import Header from "@/components/Header";
 
 export default function GrammarHelp() {
@@ -11,6 +11,60 @@ export default function GrammarHelp() {
   const [followUpQuestion, setFollowUpQuestion] = useState("");
   const [followUpAnswer, setFollowUpAnswer] = useState("");
   const [error, setError] = useState("");
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+  const [selectedSuggestion, setSelectedSuggestion] = useState("");
+  const followUpInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Fetch question suggestions when translation and explanation are available
+    if (translation && explanation && !isLoading) {
+      fetchQuestionSuggestions();
+    }
+  }, [translation, explanation, isLoading]);
+
+  const fetchQuestionSuggestions = async () => {
+    try {
+      const response = await fetch("/api/grammar/suggest-questions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          originalText: inputText,
+          translation,
+          explanation,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Error fetching suggestions:", errorData);
+        return;
+      }
+
+      const data = await response.json();
+      if (data.questions && Array.isArray(data.questions)) {
+        setSuggestedQuestions(data.questions);
+        setSelectedSuggestion(data.questions[0] || "");
+      }
+    } catch (error) {
+      console.error("Error fetching question suggestions:", error);
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Tab" && selectedSuggestion) {
+      e.preventDefault();
+      setFollowUpQuestion(selectedSuggestion);
+    }
+  };
+
+  const handleSuggestionClick = (question: string) => {
+    setFollowUpQuestion(question);
+    if (followUpInputRef.current) {
+      followUpInputRef.current.focus();
+    }
+  };
 
   const handleTranslate = async () => {
     if (!inputText.trim()) return;
@@ -20,6 +74,8 @@ export default function GrammarHelp() {
     setExplanation("");
     setFollowUpAnswer("");
     setError("");
+    setSuggestedQuestions([]);
+    setSelectedSuggestion("");
 
     try {
       const response = await fetch("/api/grammar", {
@@ -187,10 +243,37 @@ export default function GrammarHelp() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Ask a follow-up question
               </label>
+
+              {suggestedQuestions.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    Suggested questions (click to select or press Tab to use the
+                    highlighted one):
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestedQuestions.map((question, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSuggestionClick(question)}
+                        className={`text-xs py-1 px-2 rounded-full ${
+                          question === selectedSuggestion
+                            ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-300"
+                            : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                        }`}
+                      >
+                        {question}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <input
+                ref={followUpInputRef}
                 type="text"
                 value={followUpQuestion}
                 onChange={(e) => setFollowUpQuestion(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="e.g., Why using did here? or Can I say I have done it?"
                 className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               />
