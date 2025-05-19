@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function Header() {
   const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <header className="bg-white dark:bg-gray-900 shadow">
@@ -12,12 +15,35 @@ export default function Header() {
           <span role="img" aria-label="Microphone" className="text-2xl">
             🎤
           </span>
-          <h1 className="text-xl font-bold text-blue-600 dark:text-blue-400">
+          <Link
+            href="/"
+            className="text-xl font-bold text-blue-600 dark:text-blue-400"
+          >
             TalkTutor
-          </h1>
+          </Link>
         </div>
 
-        <div className="flex items-center">
+        <div className="flex items-center space-x-4">
+          <Link
+            href="/"
+            className={`text-sm ${
+              pathname === "/"
+                ? "text-blue-600 dark:text-blue-400 font-medium"
+                : "text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-400"
+            } transition-colors`}
+          >
+            Today&apos;s Topic
+          </Link>
+          <Link
+            href="/grammar-help"
+            className={`text-sm ${
+              pathname === "/grammar-help"
+                ? "text-blue-600 dark:text-blue-400 font-medium"
+                : "text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-400"
+            } transition-colors`}
+          >
+            Grammar Help
+          </Link>
           <button
             onClick={() => setIsInfoOpen(!isInfoOpen)}
             className="text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
@@ -33,31 +59,26 @@ export default function Header() {
           <h2 className="text-lg font-semibold mb-2">About TalkTutor</h2>
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
             TalkTutor helps you practice your English through natural
-            conversation. Just tap the microphone button and start speaking.
+            conversation. Start with the daily topic or use grammar help to
+            improve your skills.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
-              <h3 className="text-sm font-medium mb-1">How to Use</h3>
+              <h3 className="text-sm font-medium mb-1">Today&apos;s Topic</h3>
               <ol className="text-xs text-gray-600 dark:text-gray-400 list-decimal pl-4">
-                <li>Tap the blue microphone button to start recording</li>
-                <li>Speak clearly in English</li>
-                <li>Tap the red stop button when you&apos;re done</li>
-                <li>Wait for TalkTutor to respond</li>
-                <li>Continue the conversation to practice</li>
+                <li>View the daily topic</li>
+                <li>Click &quot;Start Practice&quot;</li>
+                <li>Practice with role-play or speaking quiz</li>
+                <li>Complete daily activities to build a streak</li>
               </ol>
             </div>
             <div>
-              <h3 className="text-sm font-medium mb-1">Tips</h3>
+              <h3 className="text-sm font-medium mb-1">Grammar Help</h3>
               <ul className="text-xs text-gray-600 dark:text-gray-400 list-disc pl-4">
-                <li>
-                  Try speaking on various topics to expand your vocabulary
-                </li>
-                <li>Ask TalkTutor to correct your grammar</li>
-                <li>
-                  Practice different scenarios like ordering food or giving
-                  directions
-                </li>
-                <li>Try to maintain longer conversations</li>
+                <li>Type in Vietnamese</li>
+                <li>Get English translation</li>
+                <li>See grammar explanation</li>
+                <li>Ask follow-up questions</li>
               </ul>
             </div>
           </div>

@@ -11,7 +11,7 @@ export const startRecording = async (): Promise<{
     const mediaRecorder = new MediaRecorder(stream);
     const audioChunks: Blob[] = [];
 
-    mediaRecorder.addEventListener('dataavailable', (event) => {
+    mediaRecorder.addEventListener("dataavailable", (event) => {
       if (event.data.size > 0) {
         audioChunks.push(event.data);
       }
@@ -20,8 +20,8 @@ export const startRecording = async (): Promise<{
     mediaRecorder.start();
     return { mediaRecorder, audioChunks };
   } catch (error) {
-    console.error('Error starting recording:', error);
-    throw new Error('Failed to start recording');
+    console.error("Error starting recording:", error);
+    throw new Error("Failed to start recording");
   }
 };
 
@@ -36,8 +36,8 @@ export const stopRecording = (
   audioChunks: Blob[]
 ): Promise<Blob> => {
   return new Promise((resolve) => {
-    mediaRecorder.addEventListener('stop', () => {
-      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+    mediaRecorder.addEventListener("stop", () => {
+      const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
       // Stop all tracks of the stream
       mediaRecorder.stream.getTracks().forEach((track) => track.stop());
       resolve(audioBlob);
@@ -55,21 +55,21 @@ export const stopRecording = (
 export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
   try {
     const formData = new FormData();
-    formData.append('audio', audioBlob);
+    formData.append("audio", audioBlob);
 
-    const response = await fetch('/api/speech-to-text', {
-      method: 'POST',
+    const response = await fetch("/api/speech-to-text", {
+      method: "POST",
       body: formData,
     });
 
     if (!response.ok) {
-      throw new Error('Failed to transcribe audio');
+      throw new Error("Failed to transcribe audio");
     }
 
     const data = await response.json();
     return data.text;
   } catch (error) {
-    console.error('Error transcribing audio:', error);
+    console.error("Error transcribing audio:", error);
     throw error;
   }
 };
@@ -81,32 +81,32 @@ export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
  */
 export const speakText = async (text: string): Promise<HTMLAudioElement> => {
   try {
-    const response = await fetch('/api/text-to-speech', {
-      method: 'POST',
+    const response = await fetch("/api/text-to-speech", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ text }),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to synthesize speech');
+      throw new Error("Failed to synthesize speech");
     }
 
     const audioBlob = await response.blob();
     const audioUrl = URL.createObjectURL(audioBlob);
     const audio = new Audio(audioUrl);
-    
+
     audio.play();
-    
+
     // Clean up the URL object when the audio is done playing
-    audio.addEventListener('ended', () => {
+    audio.addEventListener("ended", () => {
       URL.revokeObjectURL(audioUrl);
     });
 
     return audio;
   } catch (error) {
-    console.error('Error speaking text:', error);
+    console.error("Error speaking text:", error);
     throw error;
   }
-}; 
+};
