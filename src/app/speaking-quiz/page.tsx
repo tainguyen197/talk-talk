@@ -139,6 +139,8 @@ export default function SpeakingQuiz() {
     const newStreak = parseInt(savedStreak) + 1;
     localStorage.setItem("streak", newStreak.toString());
     localStorage.setItem("lastPracticeDate", new Date().toDateString());
+    // Set the progress to 100% for the day's goal
+    localStorage.setItem("dailyProgress", "100");
   };
 
   const handleFinish = () => {

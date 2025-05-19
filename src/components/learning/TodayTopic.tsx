@@ -42,12 +42,25 @@ export default function TodayTopic() {
   const [topic, setTopic] = useState<(typeof topics)[0] | null>(null);
   const [streak, setStreak] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [dailyGoal] = useState("Complete today's practice");
 
   useEffect(() => {
     // Load streak data from localStorage
     const savedStreak = localStorage.getItem("streak");
     const lastPracticeDate = localStorage.getItem("lastPracticeDate");
+    const savedProgress = localStorage.getItem("dailyProgress");
     const today = new Date().toDateString();
+
+    // Set progress if available
+    if (
+      savedProgress &&
+      lastPracticeDate &&
+      new Date(lastPracticeDate).toDateString() === today
+    ) {
+      setProgress(parseInt(savedProgress));
+    } else {
+      setProgress(0);
+    }
 
     if (savedStreak) {
       // Check if the streak is still valid (user practiced yesterday)
@@ -63,13 +76,13 @@ export default function TodayTopic() {
       ) {
         // User already practiced today
         setStreak(parseInt(savedStreak));
-        setProgress(100);
       } else if (
         lastPracticeDate &&
         new Date(lastPracticeDate).toDateString() !==
-          new Date(Date.now() - 86400000).toDateString()
+          new Date(Date.now() - 86400000).toDateString() &&
+        new Date(lastPracticeDate).toDateString() !== today
       ) {
-        // Streak broken - user didn't practice yesterday
+        // Streak broken - user didn't practice yesterday and not today
         setStreak(0);
         localStorage.setItem("streak", "0");
       }
@@ -111,11 +124,14 @@ export default function TodayTopic() {
             <span className="text-orange-500 mr-1">🔥</span>
             <span className="font-semibold">{streak} day streak</span>
           </div>
-          <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-blue-500 transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            ></div>
+          <div className="flex flex-col items-end">
+            <span className="text-xs text-gray-500 mb-1">{dailyGoal}</span>
+            <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-500 transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
           </div>
         </div>
 

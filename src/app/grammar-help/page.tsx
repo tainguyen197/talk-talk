@@ -10,6 +10,7 @@ export default function GrammarHelp() {
   const [isLoading, setIsLoading] = useState(false);
   const [followUpQuestion, setFollowUpQuestion] = useState("");
   const [followUpAnswer, setFollowUpAnswer] = useState("");
+  const [error, setError] = useState("");
 
   const handleTranslate = async () => {
     if (!inputText.trim()) return;
@@ -18,25 +19,65 @@ export default function GrammarHelp() {
     setTranslation("");
     setExplanation("");
     setFollowUpAnswer("");
+    setError("");
 
     try {
-      // This would be replaced with an actual API call to OpenAI
-      // For demonstration, we'll simulate a response
-      setTimeout(() => {
-        if (inputText.includes("Tôi mới làm nó hôm qua")) {
-          setTranslation("I just did it yesterday");
-          setExplanation(
-            "This sentence uses the simple past tense ('did') because it refers to a completed action that happened at a specific time in the past (yesterday). In English, when you mention a specific time in the past, you typically use the simple past tense."
-          );
+      const response = await fetch("/api/grammar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: inputText }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to translate");
+      }
+
+      if (data.translation && data.explanation) {
+        setTranslation(data.translation);
+        setExplanation(data.explanation);
+      } else {
+        throw new Error("Invalid response format");
+      }
+
+      // Record the grammar help usage for daily progress
+      const today = new Date().toDateString();
+      const lastPracticeDate = localStorage.getItem("lastPracticeDate");
+      const currentProgress = parseInt(
+        localStorage.getItem("dailyProgress") || "0"
+      );
+
+      // If it's a new day, update the streak
+      if (
+        !lastPracticeDate ||
+        new Date(lastPracticeDate).toDateString() !== today
+      ) {
+        // Check if the streak can be continued (was practiced yesterday)
+        const savedStreak = localStorage.getItem("streak") || "0";
+        let newStreak = parseInt(savedStreak);
+
+        if (
+          lastPracticeDate &&
+          new Date(lastPracticeDate).toDateString() ===
+            new Date(Date.now() - 86400000).toDateString()
+        ) {
+          // User practiced yesterday, continue streak
+          newStreak += 1;
         } else {
-          // Simulate a translation for any other input
-          setTranslation("English translation would appear here");
-          setExplanation(
-            "The grammar explanation would be provided here, explaining why certain tenses or structures are used in the English translation."
-          );
+          // Streak broken
+          newStreak = 1; // Start a new streak
         }
-        setIsLoading(false);
-      }, 1500);
+
+        localStorage.setItem("streak", newStreak.toString());
+        localStorage.setItem("lastPracticeDate", today);
+        localStorage.setItem("dailyProgress", "50"); // Grammar help counts as 50% progress
+      } else if (currentProgress < 50) {
+        // If already practiced today but progress is less than 50%, update it
+        localStorage.setItem("dailyProgress", "50");
+      }
 
       // Save to localStorage
       const savedQuestions = JSON.parse(
@@ -52,36 +93,43 @@ export default function GrammarHelp() {
       ); // Keep only the last 10
     } catch (error) {
       console.error("Error translating:", error);
+      setError((error as Error).message || "Failed to translate");
+    } finally {
       setIsLoading(false);
     }
   };
 
   const handleFollowUpQuestion = async () => {
-    if (!followUpQuestion.trim()) return;
+    if (!followUpQuestion.trim() || !inputText || !translation) return;
 
     setIsLoading(true);
     setFollowUpAnswer("");
+    setError("");
 
     try {
-      // This would be replaced with an actual API call
-      setTimeout(() => {
-        if (followUpQuestion.includes("Why using 'did' here?")) {
-          setFollowUpAnswer(
-            "The word 'did' is used here because it's the past tense form of 'do'. Since the action happened yesterday (in the past), we need to use the past tense. 'Did' is used for all subjects (I, you, he, she, etc.) in the simple past tense."
-          );
-        } else if (followUpQuestion.includes("Can I say 'I have done it'?")) {
-          setFollowUpAnswer(
-            "Yes, you can say 'I have done it', but it would have a slightly different meaning. 'I have done it' uses the present perfect tense and would suggest that the action was completed at some unspecified time in the past with a connection to the present. 'I just did it yesterday' is more specific about when the action happened."
-          );
-        } else {
-          setFollowUpAnswer(
-            "Your question about the grammar would be answered here with a clear explanation about the specific aspect you're asking about."
-          );
-        }
-        setIsLoading(false);
-      }, 1500);
+      const response = await fetch("/api/grammar/follow-up", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          originalText: inputText,
+          translation: translation,
+          question: followUpQuestion,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to get answer");
+      }
+
+      setFollowUpAnswer(data.answer);
     } catch (error) {
       console.error("Error processing follow-up:", error);
+      setError((error as Error).message || "Failed to get answer");
+    } finally {
       setIsLoading(false);
     }
   };
@@ -110,6 +158,12 @@ export default function GrammarHelp() {
             {isLoading ? "Translating..." : "Translate & Explain"}
           </button>
         </div>
+
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900 text-red-700 dark:text-red-300 p-4 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
 
         {translation && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">

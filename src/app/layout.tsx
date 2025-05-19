@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TalkTutor - Speak. Listen. Learn.",
+  title: "Talk Talk - Speak. Listen. Learn.",
   description: "Interactive, voice-powered English learning with AI",
 };
 

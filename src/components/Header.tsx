@@ -19,7 +19,7 @@ export default function Header() {
             href="/"
             className="text-xl font-bold text-blue-600 dark:text-blue-400"
           >
-            TalkTutor
+            Talk Talk
           </Link>
         </div>
 
@@ -56,11 +56,10 @@ export default function Header() {
 
       {isInfoOpen && (
         <div className="max-w-4xl mx-auto p-4 bg-gray-50 dark:bg-gray-800 rounded-b-lg shadow-inner">
-          <h2 className="text-lg font-semibold mb-2">About TalkTutor</h2>
+          <h2 className="text-lg font-semibold mb-2">About Talk Talk</h2>
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-            TalkTutor helps you practice your English through natural
-            conversation. Start with the daily topic or use grammar help to
-            improve your skills.
+            Talk Talk helps you practice basic English speaking for daily
+            communication, with simple grammar help and smart guidance.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>

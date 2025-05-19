@@ -61,95 +61,45 @@ export default function RolePlay() {
     setIsLoading(true);
 
     try {
-      // In a real app, this would call an API with OpenAI integration
-      // For demo purposes, we'll simulate responses
+      const response = await fetch("/api/chat/role-play", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          topic,
+          userMessage: inputMessage,
+          conversation: messages,
+        }),
+      });
 
-      setTimeout(() => {
-        const responseMessage = generateResponse(
-          inputMessage,
-          topic?.title,
-          messages.length
-        );
-        setMessages((prev) => [
-          ...prev,
-          { text: responseMessage, sender: "ai" },
-        ]);
-        setIsLoading(false);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to get response");
+      }
 
-        // Check if we should end the conversation (after a certain number of exchanges)
-        if (messages.length >= 8) {
-          setIsCompleted(true);
-          updateStreak();
-        }
-      }, 1500);
+      const data = await response.json();
+
+      setMessages((prev) => [...prev, { text: data.response, sender: "ai" }]);
+
+      // Check if we should end the conversation (after a certain number of exchanges)
+      if (messages.length >= 8) {
+        setIsCompleted(true);
+        updateStreak();
+      }
     } catch (error) {
       console.error("Error generating response:", error);
+      // Fallback response in case of error
+      setMessages((prev) => [
+        ...prev,
+        {
+          text: "I'm sorry, I couldn't understand. Could you please try again?",
+          sender: "ai",
+        },
+      ]);
+    } finally {
       setIsLoading(false);
     }
-  };
-
-  const generateResponse = (
-    userInput: string,
-    topicTitle: string | undefined,
-    messageCount: number
-  ) => {
-    // Use a default topic if undefined
-    const title = topicTitle || "General Conversation";
-    // This is a simplified response generator for demo purposes
-    // In a real app, you would use OpenAI API
-
-    const lowercaseInput = userInput.toLowerCase();
-
-    if (title === "Shopping for Clothes") {
-      if (
-        lowercaseInput.includes("looking for") ||
-        lowercaseInput.includes("need")
-      ) {
-        return "We have a great selection! What size are you looking for? And do you have a specific color in mind?";
-      } else if (
-        lowercaseInput.includes("size") ||
-        lowercaseInput.includes("medium") ||
-        lowercaseInput.includes("large")
-      ) {
-        return "Perfect! We have that size in stock. Would you like to try it on? The fitting rooms are just over there.";
-      } else if (
-        lowercaseInput.includes("price") ||
-        lowercaseInput.includes("cost") ||
-        lowercaseInput.includes("how much")
-      ) {
-        return "That item is $39.99, but we're having a sale today - buy one get one 50% off!";
-      } else if (messageCount > 6) {
-        return "You've made a great choice! Would you like to pay by cash or card?";
-      }
-    } else if (title === "Ordering Food at a Restaurant") {
-      if (
-        lowercaseInput.includes("menu") ||
-        lowercaseInput.includes("recommend")
-      ) {
-        return "Our special today is grilled salmon with roasted vegetables. It's really popular! Would you like to try it?";
-      } else if (
-        lowercaseInput.includes("order") ||
-        lowercaseInput.includes("like") ||
-        lowercaseInput.includes("have")
-      ) {
-        return "Excellent choice! Would you like any sides with that?";
-      } else if (messageCount > 6) {
-        return "Your food should be ready in about 15 minutes. Can I get you anything else while you wait?";
-      }
-    }
-
-    // Generic responses if no specific patterns match
-    const genericResponses = [
-      "That's interesting! Tell me more.",
-      "I understand. What else would you like to know?",
-      "Good question! Let me help you with that.",
-      "That makes sense. Is there anything else you'd like to discuss?",
-      "I see what you mean. Let's continue our conversation.",
-    ];
-
-    return genericResponses[
-      Math.floor(Math.random() * genericResponses.length)
-    ];
   };
 
   const updateStreak = () => {
@@ -157,6 +107,8 @@ export default function RolePlay() {
     const newStreak = parseInt(savedStreak) + 1;
     localStorage.setItem("streak", newStreak.toString());
     localStorage.setItem("lastPracticeDate", new Date().toDateString());
+    // Set the progress to 100% for the day's goal
+    localStorage.setItem("dailyProgress", "100");
   };
 
   const handleFinish = () => {
