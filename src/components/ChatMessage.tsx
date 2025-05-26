@@ -1,4 +1,5 @@
 import { Message } from "@/lib/utils/chatUtils";
+import ReactMarkdown from "react-markdown";
 
 interface ChatMessageProps {
   message: Message;
@@ -16,7 +17,9 @@ export default function ChatMessage({ message }: ChatMessageProps) {
             : "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-none"
         }`}
       >
-        <p className="text-sm sm:text-base">{message.content}</p>
+        <div className="text-sm sm:text-base markdown-content">
+          <ReactMarkdown>{message.content}</ReactMarkdown>
+        </div>
         <div
           className={`text-xs mt-1 ${
             isUser ? "text-blue-100" : "text-gray-500 dark:text-gray-400"

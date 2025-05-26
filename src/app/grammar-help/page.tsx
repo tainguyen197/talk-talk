@@ -1,26 +1,164 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Header from "@/components/Header";
+import { speakText } from "@/lib/utils/audioUtils";
+import {
+  ChatHistory,
+  Message,
+  addMessage,
+  generateMessageId,
+} from "@/lib/utils/chatUtils";
+import ChatMessage from "@/components/ChatMessage";
+
+// Helper function to split grammar explanation into multiple messages
+const splitGrammarExplanation = (explanation: string): string[] => {
+  // Remove the "Grammar Explanation: " prefix if it exists
+  const cleanedExplanation = explanation.replace(
+    /^Grammar Explanation:\s*/i,
+    ""
+  );
+
+  // Check if the explanation has numbered points (like "1.", "2.", etc.)
+  const hasNumberedPoints = /\d+\.\s+[A-Z]/.test(cleanedExplanation);
+
+  if (hasNumberedPoints) {
+    // Split by numbered points
+    const pointRegex = /(\.\s+)(?=\d+\.\s+[A-Z])/g;
+    const segments = cleanedExplanation.split(pointRegex);
+
+    // If we have intro text before the first point, separate it
+    const firstSegment = segments[0];
+    const match = firstSegment.match(/^(.*?)(\d+\.\s+.*)/);
+
+    if (match && match[1].trim().length > 0) {
+      // Return intro text as first segment, then each numbered point
+      return [
+        match[1].trim(),
+        ...segments.slice(0, 1).map((s) => s.replace(match[1], "")),
+        ...segments.slice(1),
+      ].filter((s) => s.trim().length > 0);
+    }
+
+    return segments.filter((s) => s.trim().length > 0);
+  } else {
+    // Fall back to sentence-based splitting
+    const sentenceRegex = /(?<=[.!?])\s+(?=[A-Z'])/g;
+    return cleanedExplanation
+      .split(sentenceRegex)
+      .filter((s) => s.trim().length > 0);
+  }
+};
+
+// Helper function to format text with Markdown
+const formatWithMarkdown = (text: string): string => {
+  // Format numbered points (1. Point -> 1. **Point**)
+  let formattedText = text.replace(/(\d+\.\s+)([A-Z][^:]+):/g, "$1**$2**:");
+
+  // Format key grammar terms with bold
+  const grammarTerms = [
+    "present simple",
+    "past simple",
+    "future simple",
+    "present continuous",
+    "past continuous",
+    "future continuous",
+    "present perfect",
+    "past perfect",
+    "future perfect",
+    "active voice",
+    "passive voice",
+    "conditional",
+    "subject pronoun",
+    "object pronoun",
+    "possessive pronoun",
+    "infinitive",
+    "gerund",
+    "participle",
+    "adjective",
+    "adverb",
+    "noun",
+    "verb",
+    "preposition",
+    "indicative",
+    "subjunctive",
+    "imperative",
+    "interrogative",
+    "declarative",
+    "negative form",
+  ];
+
+  // Escape regex special characters in grammar terms
+  const escapedTerms = grammarTerms.map((term) =>
+    term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  );
+
+  // Create regex pattern for grammar terms (with word boundaries)
+  const termsPattern = new RegExp(`\\b(${escapedTerms.join("|")})\\b`, "gi");
+
+  // Replace grammar terms with bold versions
+  formattedText = formattedText.replace(termsPattern, "**$1**");
+
+  return formattedText;
+};
 
 export default function GrammarHelp() {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [recordedText, setRecordedText] = useState("");
-  const [translation, setTranslation] = useState("");
-  const [explanation, setExplanation] = useState("");
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [error, setError] = useState("");
+
+  const [history, setHistory] = useState<ChatHistory>([
+    {
+      id: "welcome",
+      role: "assistant",
+      content:
+        "Hello! I'm your Vietnamese grammar assistant. Speak in Vietnamese, and I'll provide an English translation with grammar explanations.",
+      timestamp: Date.now(),
+    },
+  ]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom of chat container when messages change
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  }, [history]);
+
+  // Initial welcome message voice
+  useEffect(() => {
+    if (history.length === 1) {
+      speakText(history[0].content).catch(console.error);
+    }
+  }, []);
 
   const startRecording = async () => {
     try {
       setError("");
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Get the user's audio stream with specific constraints for better quality
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000,
+        },
+      });
 
+      // Try to use a widely supported codec if available
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+
+      // Create a new MediaRecorder with the stream
       mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: "audio/webm",
+        mimeType: mimeType,
+        audioBitsPerSecond: 128000, // 128 kbps for better quality
       });
 
       audioChunksRef.current = [];
@@ -31,11 +169,8 @@ export default function GrammarHelp() {
         }
       };
 
-      mediaRecorderRef.current.onstop = () => {
-        processRecording();
-      };
-
-      mediaRecorderRef.current.start();
+      // Request data every 250ms to ensure we have data even for short recordings
+      mediaRecorderRef.current.start(250);
       setIsRecording(true);
     } catch (error) {
       console.error("Error starting recording:", error);
@@ -50,20 +185,37 @@ export default function GrammarHelp() {
         .getTracks()
         .forEach((track) => track.stop());
       setIsRecording(false);
+
+      // Ensure we have enough time to collect the last audio chunk
+      setTimeout(processRecording, 100);
     }
   };
 
   const processRecording = async () => {
     setIsProcessing(true);
-    setRecordedText("");
-    setTranslation("");
-    setExplanation("");
 
     try {
+      // Check if we have audio data
+      if (!audioChunksRef.current.length) {
+        throw new Error(
+          "No audio data captured. Please try speaking louder or check your microphone."
+        );
+      }
+
       // Convert audio to text
       const audioBlob = new Blob(audioChunksRef.current, {
-        type: "audio/webm",
+        type: mediaRecorderRef.current?.mimeType || "audio/webm",
       });
+
+      // Log blob size to help with debugging
+      console.log(`Audio blob size: ${audioBlob.size} bytes`);
+
+      if (audioBlob.size < 100) {
+        throw new Error(
+          "Audio recording too short. Please try speaking for a longer time."
+        );
+      }
+
       const formData = new FormData();
       formData.append("audio", audioBlob);
 
@@ -73,12 +225,26 @@ export default function GrammarHelp() {
       });
 
       if (!speechResponse.ok) {
-        throw new Error("Failed to convert speech to text");
+        const errorData = await speechResponse.json();
+        throw new Error(
+          errorData.error ||
+            errorData.details ||
+            "Failed to convert speech to text"
+        );
       }
 
       const speechData = await speechResponse.json();
       const recognizedText = speechData.text;
-      setRecordedText(recognizedText);
+
+      if (!recognizedText.trim()) {
+        throw new Error(
+          "No speech detected. Please try again and speak clearly."
+        );
+      }
+
+      // Add user message to chat history
+      const updatedHistory = addMessage(history, "user", recognizedText);
+      setHistory(updatedHistory);
 
       // Get translation and grammar explanation
       const grammarResponse = await fetch("/api/grammar", {
@@ -94,8 +260,60 @@ export default function GrammarHelp() {
       }
 
       const grammarData = await grammarResponse.json();
-      setTranslation(grammarData.translation);
-      setExplanation(grammarData.explanation);
+
+      // Add translation message
+      const translationMessage: Message = {
+        id: generateMessageId(),
+        role: "assistant",
+        content: grammarData.translation,
+        timestamp: Date.now(),
+      };
+
+      // Split the explanation into multiple messages
+      const explanationSegments = splitGrammarExplanation(
+        grammarData.explanation
+      );
+
+      // Create an array of explanation messages with incrementing timestamps
+      const explanationMessages: Message[] = explanationSegments.map(
+        (segment, index) => ({
+          id: generateMessageId(),
+          role: "assistant",
+          content:
+            index === 0
+              ? `Grammar Explanation: ${formatWithMarkdown(segment)}`
+              : formatWithMarkdown(segment),
+          timestamp: Date.now() + (index + 1), // Add 1ms per message to ensure correct order
+        })
+      );
+
+      // Update history with translation and explanation messages
+      setHistory((prev) => [
+        ...prev,
+        translationMessage,
+        ...explanationMessages,
+      ]);
+
+      // Speak the translation and explanation
+      setIsSpeaking(true);
+      try {
+        const audio = await speakText(grammarData.translation);
+
+        // When translation finishes, speak the explanations sequentially
+        audio.addEventListener("ended", async () => {
+          try {
+            // Join the explanations back together for speaking
+            await speakText(grammarData.explanation);
+          } catch (error) {
+            console.error("Error speaking explanation:", error);
+          } finally {
+            setIsSpeaking(false);
+          }
+        });
+      } catch (error) {
+        console.error("Error speaking translation:", error);
+        setIsSpeaking(false);
+      }
 
       // Save usage for progress tracking
       const today = new Date().toDateString();
@@ -135,54 +353,53 @@ export default function GrammarHelp() {
     }
   };
 
-  const handlePressToTalk = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  };
-
-  const clearResults = () => {
-    setRecordedText("");
-    setTranslation("");
-    setExplanation("");
-    setError("");
-  };
-
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950">
       <Header />
-      <main className="flex-1 overflow-y-auto p-4 max-w-xl mx-auto w-full">
-        <h1 className="text-2xl font-bold text-center mb-8">Grammar Help</h1>
+      <main className="flex-1 flex flex-col max-w-xl mx-auto w-full">
+        <div className="text-2xl font-bold text-center py-4 border-b border-gray-200 dark:border-gray-800">
+          Grammar Help
+        </div>
 
-        {/* Press to Talk Button */}
-        <div className="flex flex-col items-center mb-8">
-          <button
-            onClick={handlePressToTalk}
-            disabled={isProcessing}
-            className={`relative w-32 h-32 rounded-full text-white font-semibold text-lg transition-all duration-200 ${
-              isRecording
-                ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                : isProcessing
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-blue-500 hover:bg-blue-600 hover:scale-105"
-            } shadow-lg`}
-          >
-            {isProcessing ? (
-              <div className="flex flex-col items-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mb-2"></div>
-                <span className="text-sm">Processing...</span>
-              </div>
-            ) : isRecording ? (
-              <div className="flex flex-col items-center">
-                <div className="w-6 h-6 bg-white rounded-full mb-2"></div>
-                <span className="text-sm">Release to Stop</span>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center">
+        {/* Chat Messages */}
+        <div
+          ref={chatContainerRef}
+          className="flex-1 overflow-y-auto p-4 space-y-4"
+        >
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900 text-red-700 dark:text-red-300 p-4 rounded-lg mb-4">
+              {error}
+            </div>
+          )}
+
+          {history.map((message) => (
+            <ChatMessage key={message.id} message={message} />
+          ))}
+        </div>
+
+        {/* Recording Controls */}
+        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex items-center justify-center">
+            <button
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isProcessing || isSpeaking}
+              className={`relative w-16 h-16 rounded-full text-white font-semibold transition-all duration-200 ${
+                isRecording
+                  ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                  : isProcessing || isSpeaking
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-blue-500 hover:bg-blue-600 hover:scale-105"
+              } shadow-lg`}
+            >
+              {isProcessing ? (
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+              ) : isSpeaking ? (
+                <div className="animate-pulse text-xl">🔊</div>
+              ) : isRecording ? (
+                <div className="w-4 h-4 bg-white rounded"></div>
+              ) : (
                 <svg
-                  className="w-8 h-8 mb-2"
+                  className="w-6 h-6"
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >
@@ -192,73 +409,19 @@ export default function GrammarHelp() {
                     clipRule="evenodd"
                   />
                 </svg>
-                <span className="text-sm">Press to Talk</span>
-              </div>
-            )}
-          </button>
-
-          <p className="text-sm text-gray-600 dark:text-gray-400 text-center mt-4 max-w-xs">
-            Speak in Vietnamese and get instant translation with grammar
-            explanation
+              )}
+            </button>
+          </div>
+          <p className="text-center mt-2 text-sm text-gray-600 dark:text-gray-400">
+            {isRecording
+              ? "Tap to stop recording"
+              : isProcessing
+              ? "Processing your speech..."
+              : isSpeaking
+              ? "Speaking..."
+              : "Tap to start speaking in Vietnamese"}
           </p>
         </div>
-
-        {/* Error Display */}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900 text-red-700 dark:text-red-300 p-4 rounded-lg mb-6">
-            {error}
-          </div>
-        )}
-
-        {/* Results */}
-        {(recordedText || translation || explanation) && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                Results
-              </h2>
-              <button
-                onClick={clearResults}
-                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                Clear
-              </button>
-            </div>
-
-            {recordedText && (
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  What you said:
-                </h3>
-                <p className="text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                  {recordedText}
-                </p>
-              </div>
-            )}
-
-            {translation && (
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  English Translation:
-                </h3>
-                <p className="text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-900/20 p-3 rounded">
-                  {translation}
-                </p>
-              </div>
-            )}
-
-            {explanation && (
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Grammar Explanation:
-                </h3>
-                <p className="text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 p-3 rounded leading-relaxed">
-                  {explanation}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
       </main>
     </div>
   );

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OpenAI } from "openai";
+import { TextToSpeechClient } from "@google-cloud/text-to-speech";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize the Google Cloud Text-to-Speech client
+const textToSpeechClient = new TextToSpeechClient();
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,25 +12,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Text is required" }, { status: 400 });
     }
 
-    // Send request to OpenAI TTS API
-    const mp3 = await openai.audio.speech.create({
-      model: "tts-1",
-      voice: "alloy",
-      input: text,
-    });
+    // Configure the voice request for Google Cloud Text-to-Speech
+    const request = {
+      input: { text },
+      voice: {
+        languageCode: "en-US",
+        ssmlGender: "NEUTRAL" as const,
+        name: "en-US-Chirp3-HD-Alnilam",
+      },
+      audioConfig: {
+        audioEncoding: "MP3" as const,
+        speakingRate: 1.0, // Normal speed
+        pitch: 0, // Default pitch
+      },
+    };
 
-    // Convert the response to an ArrayBuffer
-    const buffer = Buffer.from(await mp3.arrayBuffer());
+    // Send request to Google Cloud Text-to-Speech API
+    const [response] = await textToSpeechClient.synthesizeSpeech(request);
+
+    // Convert the response to a Buffer
+    const audioContent = response.audioContent as Buffer;
 
     // Return the audio file
-    return new NextResponse(buffer, {
+    return new NextResponse(audioContent, {
       headers: {
         "Content-Type": "audio/mpeg",
-        "Content-Length": buffer.byteLength.toString(),
+        "Content-Length": audioContent.byteLength.toString(),
       },
     });
   } catch (error) {
-    console.error("Text-to-speech API error:", error);
+    console.error("Google Text-to-speech API error:", error);
     return NextResponse.json(
       { error: "An error occurred during speech synthesis" },
       { status: 500 }
