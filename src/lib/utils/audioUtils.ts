@@ -77,16 +77,20 @@ export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
 /**
  * Convert text to speech and play the audio
  * @param text The text to convert to speech
+ * @param language The language code for speech synthesis (e.g., 'en-US', 'vi-VN')
  * @returns A promise that resolves when the audio starts playing
  */
-export const speakText = async (text: string): Promise<HTMLAudioElement> => {
+export const speakText = async (
+  text: string,
+  language: string = "en-US"
+): Promise<HTMLAudioElement> => {
   try {
     const response = await fetch("/api/text-to-speech", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, language }),
     });
 
     if (!response.ok) {

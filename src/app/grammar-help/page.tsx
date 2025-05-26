@@ -106,6 +106,7 @@ export default function GrammarHelp() {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingLanguage, setSpeakingLanguage] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const [history, setHistory] = useState<ChatHistory>([
@@ -297,22 +298,48 @@ export default function GrammarHelp() {
       // Speak the translation and explanation
       setIsSpeaking(true);
       try {
-        const audio = await speakText(grammarData.translation);
+        // Speak translation in English
+        setSpeakingLanguage("en-US");
+        const audio = await speakText(grammarData.translation, "en-US");
 
-        // When translation finishes, speak the explanations sequentially
+        // When translation finishes, speak the explanation in Vietnamese
         audio.addEventListener("ended", async () => {
           try {
-            // Join the explanations back together for speaking
-            await speakText(grammarData.explanation);
+            setSpeakingLanguage("vi-VN");
+            // Convert English grammar explanation to Vietnamese before speaking
+            const vietnameseExplanationResponse = await fetch(
+              "/api/grammar/translate-explanation",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  explanation: grammarData.explanation,
+                  originalText: recognizedText,
+                }),
+              }
+            );
+
+            if (!vietnameseExplanationResponse.ok) {
+              throw new Error("Failed to translate explanation to Vietnamese");
+            }
+
+            const vietnameseData = await vietnameseExplanationResponse.json();
+
+            // Speak the explanation in Vietnamese
+            await speakText(vietnameseData.vietnameseExplanation, "vi-VN");
           } catch (error) {
             console.error("Error speaking explanation:", error);
           } finally {
             setIsSpeaking(false);
+            setSpeakingLanguage(null);
           }
         });
       } catch (error) {
         console.error("Error speaking translation:", error);
         setIsSpeaking(false);
+        setSpeakingLanguage(null);
       }
 
       // Save usage for progress tracking
@@ -418,7 +445,9 @@ export default function GrammarHelp() {
               : isProcessing
               ? "Processing your speech..."
               : isSpeaking
-              ? "Speaking..."
+              ? speakingLanguage === "vi-VN"
+                ? "Đang nói giải thích ngữ pháp bằng tiếng Việt..."
+                : "Speaking English translation..."
               : "Tap to start speaking in Vietnamese"}
           </p>
         </div>
