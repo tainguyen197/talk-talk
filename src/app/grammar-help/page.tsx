@@ -1,117 +1,113 @@
 "use client";
 
-import { useState, useEffect, useRef, KeyboardEvent } from "react";
+import { useState, useRef } from "react";
 import Header from "@/components/Header";
 
 export default function GrammarHelp() {
-  const [inputText, setInputText] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [recordedText, setRecordedText] = useState("");
   const [translation, setTranslation] = useState("");
   const [explanation, setExplanation] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [followUpQuestion, setFollowUpQuestion] = useState("");
-  const [followUpAnswer, setFollowUpAnswer] = useState("");
   const [error, setError] = useState("");
-  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
-  const [selectedSuggestion, setSelectedSuggestion] = useState("");
-  const followUpInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    // Fetch question suggestions when translation and explanation are available
-    if (translation && explanation && !isLoading) {
-      fetchQuestionSuggestions();
-    }
-  }, [translation, explanation, isLoading]);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
-  const fetchQuestionSuggestions = async () => {
+  const startRecording = async () => {
     try {
-      const response = await fetch("/api/grammar/suggest-questions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          originalText: inputText,
-          translation,
-          explanation,
-        }),
+      setError("");
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      mediaRecorderRef.current = new MediaRecorder(stream, {
+        mimeType: "audio/webm",
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Error fetching suggestions:", errorData);
-        return;
-      }
+      audioChunksRef.current = [];
 
-      const data = await response.json();
-      if (data.questions && Array.isArray(data.questions)) {
-        setSuggestedQuestions(data.questions);
-        setSelectedSuggestion(data.questions[0] || "");
-      }
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.onstop = () => {
+        processRecording();
+      };
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
     } catch (error) {
-      console.error("Error fetching question suggestions:", error);
+      console.error("Error starting recording:", error);
+      setError("Failed to access microphone. Please check your permissions.");
     }
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Tab" && selectedSuggestion) {
-      e.preventDefault();
-      setFollowUpQuestion(selectedSuggestion);
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream
+        .getTracks()
+        .forEach((track) => track.stop());
+      setIsRecording(false);
     }
   };
 
-  const handleSuggestionClick = (question: string) => {
-    setFollowUpQuestion(question);
-    if (followUpInputRef.current) {
-      followUpInputRef.current.focus();
-    }
-  };
-
-  const handleTranslate = async () => {
-    if (!inputText.trim()) return;
-
-    setIsLoading(true);
+  const processRecording = async () => {
+    setIsProcessing(true);
+    setRecordedText("");
     setTranslation("");
     setExplanation("");
-    setFollowUpAnswer("");
-    setError("");
-    setSuggestedQuestions([]);
-    setSelectedSuggestion("");
 
     try {
-      const response = await fetch("/api/grammar", {
+      // Convert audio to text
+      const audioBlob = new Blob(audioChunksRef.current, {
+        type: "audio/webm",
+      });
+      const formData = new FormData();
+      formData.append("audio", audioBlob);
+
+      const speechResponse = await fetch("/api/speech-to-text", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!speechResponse.ok) {
+        throw new Error("Failed to convert speech to text");
+      }
+
+      const speechData = await speechResponse.json();
+      const recognizedText = speechData.text;
+      setRecordedText(recognizedText);
+
+      // Get translation and grammar explanation
+      const grammarResponse = await fetch("/api/grammar", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text: inputText }),
+        body: JSON.stringify({ text: recognizedText }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to translate");
+      if (!grammarResponse.ok) {
+        throw new Error("Failed to get translation and explanation");
       }
 
-      if (data.translation && data.explanation) {
-        setTranslation(data.translation);
-        setExplanation(data.explanation);
-      } else {
-        throw new Error("Invalid response format");
-      }
+      const grammarData = await grammarResponse.json();
+      setTranslation(grammarData.translation);
+      setExplanation(grammarData.explanation);
 
-      // Record the grammar help usage for daily progress
+      // Save usage for progress tracking
       const today = new Date().toDateString();
       const lastPracticeDate = localStorage.getItem("lastPracticeDate");
       const currentProgress = parseInt(
         localStorage.getItem("dailyProgress") || "0"
       );
 
-      // If it's a new day, update the streak
       if (
         !lastPracticeDate ||
         new Date(lastPracticeDate).toDateString() !== today
       ) {
-        // Check if the streak can be continued (was practiced yesterday)
         const savedStreak = localStorage.getItem("streak") || "0";
         let newStreak = parseInt(savedStreak);
 
@@ -120,176 +116,144 @@ export default function GrammarHelp() {
           new Date(lastPracticeDate).toDateString() ===
             new Date(Date.now() - 86400000).toDateString()
         ) {
-          // User practiced yesterday, continue streak
           newStreak += 1;
         } else {
-          // Streak broken
-          newStreak = 1; // Start a new streak
+          newStreak = 1;
         }
 
         localStorage.setItem("streak", newStreak.toString());
         localStorage.setItem("lastPracticeDate", today);
-        localStorage.setItem("dailyProgress", "50"); // Grammar help counts as 50% progress
+        localStorage.setItem("dailyProgress", "50");
       } else if (currentProgress < 50) {
-        // If already practiced today but progress is less than 50%, update it
         localStorage.setItem("dailyProgress", "50");
       }
-
-      // Save to localStorage
-      const savedQuestions = JSON.parse(
-        localStorage.getItem("grammarQuestions") || "[]"
-      );
-      savedQuestions.push({
-        question: inputText,
-        timestamp: new Date().toISOString(),
-      });
-      localStorage.setItem(
-        "grammarQuestions",
-        JSON.stringify(savedQuestions.slice(-10))
-      ); // Keep only the last 10
     } catch (error) {
-      console.error("Error translating:", error);
-      setError((error as Error).message || "Failed to translate");
+      console.error("Error processing recording:", error);
+      setError((error as Error).message || "Failed to process recording");
     } finally {
-      setIsLoading(false);
+      setIsProcessing(false);
     }
   };
 
-  const handleFollowUpQuestion = async () => {
-    if (!followUpQuestion.trim() || !inputText || !translation) return;
-
-    setIsLoading(true);
-    setFollowUpAnswer("");
-    setError("");
-
-    try {
-      const response = await fetch("/api/grammar/follow-up", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          originalText: inputText,
-          translation: translation,
-          question: followUpQuestion,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to get answer");
-      }
-
-      setFollowUpAnswer(data.answer);
-    } catch (error) {
-      console.error("Error processing follow-up:", error);
-      setError((error as Error).message || "Failed to get answer");
-    } finally {
-      setIsLoading(false);
+  const handlePressToTalk = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
     }
+  };
+
+  const clearResults = () => {
+    setRecordedText("");
+    setTranslation("");
+    setExplanation("");
+    setError("");
   };
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950">
       <Header />
       <main className="flex-1 overflow-y-auto p-4 max-w-xl mx-auto w-full">
-        <h1 className="text-2xl font-bold text-center mb-6">Grammar Help</h1>
+        <h1 className="text-2xl font-bold text-center mb-8">Grammar Help</h1>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Type in Vietnamese
-          </label>
-          <textarea
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder="e.g., Tôi mới làm nó hôm qua"
-            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 min-h-[100px]"
-          />
+        {/* Press to Talk Button */}
+        <div className="flex flex-col items-center mb-8">
           <button
-            onClick={handleTranslate}
-            disabled={isLoading || !inputText.trim()}
-            className="mt-4 w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors"
+            onClick={handlePressToTalk}
+            disabled={isProcessing}
+            className={`relative w-32 h-32 rounded-full text-white font-semibold text-lg transition-all duration-200 ${
+              isRecording
+                ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                : isProcessing
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-500 hover:bg-blue-600 hover:scale-105"
+            } shadow-lg`}
           >
-            {isLoading ? "Translating..." : "Translate & Explain"}
+            {isProcessing ? (
+              <div className="flex flex-col items-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mb-2"></div>
+                <span className="text-sm">Processing...</span>
+              </div>
+            ) : isRecording ? (
+              <div className="flex flex-col items-center">
+                <div className="w-6 h-6 bg-white rounded-full mb-2"></div>
+                <span className="text-sm">Release to Stop</span>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center">
+                <svg
+                  className="w-8 h-8 mb-2"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span className="text-sm">Press to Talk</span>
+              </div>
+            )}
           </button>
+
+          <p className="text-sm text-gray-600 dark:text-gray-400 text-center mt-4 max-w-xs">
+            Speak in Vietnamese and get instant translation with grammar
+            explanation
+          </p>
         </div>
 
+        {/* Error Display */}
         {error && (
           <div className="bg-red-50 dark:bg-red-900 text-red-700 dark:text-red-300 p-4 rounded-lg mb-6">
             {error}
           </div>
         )}
 
-        {translation && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                English Translation
+        {/* Results */}
+        {(recordedText || translation || explanation) && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                Results
               </h2>
-              <p className="text-blue-600 dark:text-blue-400 font-medium">
-                {translation}
-              </p>
-            </div>
-
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                Grammar Explanation
-              </h2>
-              <p className="text-gray-600 dark:text-gray-300">{explanation}</p>
-            </div>
-
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Ask a follow-up question
-              </label>
-
-              {suggestedQuestions.length > 0 && (
-                <div className="mb-3">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                    Suggested questions (click to select or press Tab to use the
-                    highlighted one):
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {suggestedQuestions.map((question, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleSuggestionClick(question)}
-                        className={`text-xs py-1 px-2 rounded-full ${
-                          question === selectedSuggestion
-                            ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-300"
-                            : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                        }`}
-                      >
-                        {question}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <input
-                ref={followUpInputRef}
-                type="text"
-                value={followUpQuestion}
-                onChange={(e) => setFollowUpQuestion(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="e.g., Why using did here? or Can I say I have done it?"
-                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              />
               <button
-                onClick={handleFollowUpQuestion}
-                disabled={isLoading || !followUpQuestion.trim()}
-                className="mt-4 w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors"
+                onClick={clearResults}
+                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
-                {isLoading ? "Processing..." : "Ask"}
+                Clear
               </button>
             </div>
 
-            {followUpAnswer && (
-              <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                <p className="text-gray-700 dark:text-gray-300">
-                  {followUpAnswer}
+            {recordedText && (
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  What you said:
+                </h3>
+                <p className="text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                  {recordedText}
+                </p>
+              </div>
+            )}
+
+            {translation && (
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  English Translation:
+                </h3>
+                <p className="text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-900/20 p-3 rounded">
+                  {translation}
+                </p>
+              </div>
+            )}
+
+            {explanation && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Grammar Explanation:
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 p-3 rounded leading-relaxed">
+                  {explanation}
                 </p>
               </div>
             )}

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { OpenAI } from 'openai';
+import { SpeechClient } from '@google-cloud/speech';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Initialize the Google Cloud Speech client
+const speechClient = new SpeechClient();
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,20 +20,44 @@ export async function POST(req: NextRequest) {
     // Create a file buffer from the blob
     const buffer = Buffer.from(await audioBlob.arrayBuffer());
     
-    // Convert Buffer to File object required by OpenAI
-    const file = new File([buffer], 'audio.webm', { type: 'audio/webm' });
+    // Configure the audio settings for Google Cloud Speech-to-Text
+    const audio = {
+      content: buffer.toString('base64'),
+    };
 
-    // Send request to OpenAI Whisper API
-    const transcription = await openai.audio.transcriptions.create({
-      file,
-      model: 'whisper-1',
-      language: 'en',
-    });
+    const config = {
+      encoding: 'WEBM_OPUS' as const, // WebM audio encoding
+      sampleRateHertz: 48000, // WebM typically uses 48kHz
+      languageCode: 'vi-VN', // Vietnamese language code
+      alternativeLanguageCodes: ['en-US'], // Fallback to English
+      enableAutomaticPunctuation: true,
+      model: 'latest_long' as const, // Use the latest long-form model
+    };
 
-    return NextResponse.json({ text: transcription.text });
+    const request = {
+      audio: audio,
+      config: config,
+    };
+
+    // Send request to Google Cloud Speech-to-Text API
+    const [response] = await speechClient.recognize(request);
+    
+    // Extract transcription from response
+    const transcription = response.results
+      ?.map(result => result.alternatives?.[0]?.transcript)
+      .join('\n') || '';
+
+    if (!transcription) {
+      return NextResponse.json(
+        { error: 'No speech detected in audio' },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ text: transcription });
     
   } catch (error) {
-    console.error('Speech-to-text API error:', error);
+    console.error('Google Cloud Speech-to-Text API error:', error);
     return NextResponse.json(
       { error: 'An error occurred during speech recognition' },
       { status: 500 }
