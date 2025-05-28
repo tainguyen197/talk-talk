@@ -410,7 +410,7 @@ export default function GrammarHelp() {
             <button
               onClick={isRecording ? stopRecording : startRecording}
               disabled={isProcessing || isSpeaking}
-              className={`relative w-16 h-16 rounded-full text-white font-semibold transition-all duration-200 ${
+              className={`flex items-center justify-center relative w-16 h-16 rounded-full text-white font-semibold transition-all duration-200 ${
                 isRecording
                   ? "bg-red-500 hover:bg-red-600 animate-pulse"
                   : isProcessing || isSpeaking
