@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Header from "@/components/Header";
+import { useGameState } from "@/hooks/useGameState";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { GameBoard } from "@/components/game/GameBoard";
+import { PracticeMessage } from "@/components/practice/PracticeMessage";
+import { RetroBackground } from "@/components/ui/RetroBackground";
 
 interface Message {
   id: string;
@@ -15,6 +19,7 @@ interface Message {
     }>;
     tips?: string[];
     overall: string;
+    isCorrect?: boolean;
   };
 }
 
@@ -22,17 +27,16 @@ export default function PracticeSpeaking() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isWaitingForQuestion, setIsWaitingForQuestion] = useState(true);
-  const [isRecording, setIsRecording] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const { gameState, handleGameProgression, resetGame } = useGameState();
+  const { isRecording, startVoiceRecording } = useVoiceInput();
+
   useEffect(() => {
-    // Start with an AI-generated question
     generateInitialQuestion();
   }, []);
 
   useEffect(() => {
-    // Scroll to bottom when messages change
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -70,7 +74,6 @@ export default function PracticeSpeaking() {
       setMessages([fallbackMessage]);
     }
     setIsLoading(false);
-    setIsWaitingForQuestion(false);
   };
 
   const handleSendMessage = async () => {
@@ -105,14 +108,22 @@ export default function PracticeSpeaking() {
       if (evaluationResponse.ok) {
         const evaluationData = await evaluationResponse.json();
 
+        // Determine if answer is correct (simple heuristic)
+        const isCorrect =
+          !evaluationData.feedback.corrections ||
+          evaluationData.feedback.corrections.length === 0;
+
         // Update the user message with feedback
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === userMessage.id
-              ? { ...msg, feedback: evaluationData.feedback }
+              ? { ...msg, feedback: { ...evaluationData.feedback, isCorrect } }
               : msg
           )
         );
+
+        // Handle game progression
+        handleGameProgression(isCorrect);
 
         // Generate next question
         const questionResponse = await fetch(
@@ -153,138 +164,16 @@ export default function PracticeSpeaking() {
     }
   };
 
-  const startVoiceRecording = async () => {
-    setIsRecording(true);
-
-    try {
-      // Check if browser supports speech recognition
-      const SpeechRecognition =
-        (window as any).SpeechRecognition ||
-        (window as any).webkitSpeechRecognition;
-
-      if (!SpeechRecognition) {
-        throw new Error("Speech recognition not supported");
-      }
-
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = "en-US";
-
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setCurrentInput(transcript);
-        setIsRecording(false);
-      };
-
-      recognition.onerror = (event: any) => {
-        console.error("Speech recognition error:", event.error);
-        setIsRecording(false);
-      };
-
-      recognition.onend = () => {
-        setIsRecording(false);
-      };
-
-      recognition.start();
-    } catch (error) {
-      console.error("Error starting voice recognition:", error);
-      setIsRecording(false);
-      // Fallback: simulate voice input for demo
-      setTimeout(() => {
-        setCurrentInput("I'm working from home today.");
-        setIsRecording(false);
-      }, 2000);
-    }
+  const handleVoiceInput = (transcript: string) => {
+    setCurrentInput(transcript);
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-black relative overflow-x-hidden">
-      {/* Animated Retro Gaming Background */}
-      <div className="animated-retro-bg">
-        <div className="grid"></div>
-        <div className="scanline"></div>
-        <div className="glitch"></div>
+      <RetroBackground />
 
-        {/* Starfield */}
-        {[...Array(50)].map((_, i) => (
-          <div
-            key={`star-${i}`}
-            className={`star ${
-              i % 3 === 0
-                ? "star-small"
-                : i % 3 === 1
-                ? "star-medium"
-                : "star-large"
-            }`}
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${2 + Math.random() * 2}s`,
-            }}
-          />
-        ))}
-
-        {/* Shooting Stars */}
-        {[...Array(3)].map((_, i) => (
-          <div
-            key={`shooting-${i}`}
-            className="shooting-star"
-            style={{
-              top: `${20 + Math.random() * 60}%`,
-              animationDelay: `${Math.random() * 8}s`,
-              animationDuration: `${6 + Math.random() * 4}s`,
-            }}
-          />
-        ))}
-
-        {/* Floating Stars */}
-        {[...Array(8)].map((_, i) => (
-          <div
-            key={`floating-${i}`}
-            className="floating-star"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 6}s`,
-              animationDuration: `${4 + Math.random() * 4}s`,
-            }}
-          />
-        ))}
-
-        {/* Pixel Particles */}
-        {[...Array(18)].map((_, i) => (
-          <div
-            key={`pixel-${i}`}
-            className="pixel"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 2}s`,
-              animationDuration: `${2 + Math.random() * 2}s`,
-            }}
-          />
-        ))}
-      </div>
-      {/* <Header /> */}
       <main className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-4 relative z-10">
-        {/* Retro Gaming Header */}
-        <div className="mb-4 p-4 border-4 border-green-400 bg-black rounded-lg shadow-lg shadow-green-400/50 relative overflow-hidden">
-          {/* Retro scanlines effect */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-green-400/10 to-transparent pointer-events-none animate-pulse"></div>
-          <h1 className="text-2xl font-bold text-green-400 font-mono tracking-wider mb-2 animate-pulse relative z-10">
-            🕹️ TODAY'S QUEST
-          </h1>
-          <p className="text-sm text-green-300 font-mono relative z-10">
-            <span className="font-bold">🎯 MISSION:</span> Master English
-            conversations and unlock grammar achievements!
-          </p>
-          <div className="mt-2 text-xs text-yellow-400 font-mono relative z-10">
-            ⚡ POWER-UPS: Real-time feedback • Grammar corrections • Level up
-            your speaking! ⚡
-          </div>
-        </div>
+        <GameBoard gameState={gameState} onReset={resetGame} />
 
         {/* Messages Container */}
         <div className="flex-1 bg-gray-900 border-4 border-cyan-400 rounded-lg shadow-lg shadow-cyan-400/50 overflow-hidden flex flex-col relative">
@@ -294,89 +183,7 @@ export default function PracticeSpeaking() {
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map((message) => (
-              <div key={message.id}>
-                <div
-                  className={`flex ${
-                    message.sender === "user" ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  <div
-                    className={`flex gap-1 max-w-xs lg:max-w-md px-4 py-3 border-2 font-mono text-sm relative ${
-                      message.sender === "user"
-                        ? "bg-purple-900 text-purple-100 border-purple-400 shadow-lg shadow-purple-400/50 rounded-r-none rounded-l-lg"
-                        : "bg-gray-800 text-green-300 border-green-400 shadow-lg shadow-green-400/50 rounded-l-none rounded-r-lg"
-                    }`}
-                  >
-                    {message.sender === "ai" && (
-                      <div className="text-green-400 animate-pulse">🤖</div>
-                    )}
-                    {message.sender === "user" && (
-                      <div className="absolute -right-1 top-1 text-purple-400 animate-pulse">
-                        👾
-                      </div>
-                    )}
-                    <p className="text-sm leading-relaxed">{message.text}</p>
-                  </div>
-                </div>
-
-                {/* Feedback Section */}
-                {message.feedback && (
-                  <div className="mt-2 ml-4 p-3 bg-gradient-to-r from-yellow-900/80 to-orange-900/80 border-2 border-yellow-400 rounded-lg shadow-lg shadow-yellow-400/30 relative overflow-hidden">
-                    {/* Glitch effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/10 to-orange-400/10 animate-pulse"></div>
-                    <div className="text-sm relative z-10">
-                      <div className="font-bold text-yellow-300 mb-2 font-mono tracking-wide">
-                        🏆 ACHIEVEMENT FEEDBACK:
-                      </div>
-
-                      {/* Grammar Corrections */}
-                      {message.feedback.corrections &&
-                        message.feedback.corrections.length > 0 && (
-                          <div className="mb-2">
-                            {message.feedback.corrections.map(
-                              (correction, index) => (
-                                <div
-                                  key={index}
-                                  className="mb-2 p-2 bg-black/50 border border-red-400/50 rounded font-mono"
-                                >
-                                  <div className="text-red-400 mb-1">
-                                    💥 CRITICAL ERROR: "{correction.original}"
-                                  </div>
-                                  <div className="text-green-400 mb-1">
-                                    ✨ FIXED VERSION: "{correction.corrected}"
-                                  </div>
-                                  <div className="text-xs text-cyan-300">
-                                    🔧 DEBUG INFO: {correction.explanation}
-                                  </div>
-                                </div>
-                              )
-                            )}
-                          </div>
-                        )}
-
-                      {/* Tips */}
-                      {message.feedback.tips &&
-                        message.feedback.tips.length > 0 && (
-                          <div className="mb-2">
-                            {message.feedback.tips.map((tip, index) => (
-                              <div
-                                key={index}
-                                className="text-cyan-300 text-xs font-mono mb-1"
-                              >
-                                🎯 POWER-UP TIP: {tip}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                      {/* Overall Feedback */}
-                      <div className="text-yellow-200 text-xs font-mono mt-2 p-2 bg-black/30 border border-yellow-400/30 rounded">
-                        📊 LEVEL STATUS: {message.feedback.overall}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <PracticeMessage key={message.id} message={message} />
             ))}
 
             {isLoading && (
@@ -421,7 +228,7 @@ export default function PracticeSpeaking() {
               <div className="flex space-x-3">
                 {/* Voice Button */}
                 <button
-                  onClick={startVoiceRecording}
+                  onClick={() => startVoiceRecording(handleVoiceInput)}
                   disabled={isLoading || isRecording}
                   className={`flex-1 py-4 px-6 border-2 font-mono font-bold transition-all transform hover:scale-105 text-lg ${
                     isRecording
