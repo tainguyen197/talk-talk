@@ -44,6 +44,16 @@ export default function Header() {
           >
             Grammar Help
           </Link>
+          <Link
+            href="/practice-speaking"
+            className={`text-sm ${
+              pathname === "/practice-speaking"
+                ? "text-blue-600 dark:text-blue-400 font-medium"
+                : "text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-400"
+            } transition-colors`}
+          >
+            Practice Speaking
+          </Link>
           <button
             onClick={() => setIsInfoOpen(!isInfoOpen)}
             className="text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"

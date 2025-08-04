@@ -20,7 +20,7 @@ export default function ChatInterface() {
       id: "welcome",
       role: "assistant",
       content:
-        "Hello! I'm TalkTutor, your AI English tutor. Speak to me in English, and I'll help you practice and improve your skills. What would you like to talk about today?",
+        "speakTextSteam rising from the kettle, sunlight seeping in through the crack of my floral shades, my mint green tea timer resting on the kitchen counter, an empty bottle sitting next to it, the criss-cross pattern on my gray wool socks.",
       timestamp: Date.now(),
     },
   ]);

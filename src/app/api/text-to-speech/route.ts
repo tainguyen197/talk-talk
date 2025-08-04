@@ -7,19 +7,23 @@ const textToSpeechClient = new TextToSpeechClient();
 // Map of language codes to appropriate voice models
 const languageVoiceMap: Record<
   string,
-  { languageCode: string; name: string; speed: number }
+  { languageCode: string; name: string; speed: number; region: string }
 > = {
   "en-US": {
     languageCode: "en-US",
-    name: "en-US-Chirp3-HD-Alnilam",
-    speed: 1.0,
+   "name": "en-us-Chirp3-HD-Leda",
+    speed: 0.95,
+    region: "us",
   },
   "vi-VN": {
     languageCode: "vi-VN",
     name: "vi-VN-Chirp3-HD-Aoede",
     speed: 1.2,
+    region: "asia-southeast1",
   },
 };
+
+const confirmationText = "The alarm blared! Red lights flashed, painting the corridor in a chaotic glow. 'Go, go, go!' I yelled, vaulting over overturned crates. Footsteps pounded behind us. We burst through the heavy door, straight onto the platform. The train was already moving, picking up speed. No time to think. 'Jump!' I screamed, launching myself into the gap. We made it. Just barely."
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,11 +38,13 @@ export async function POST(req: NextRequest) {
 
     // Configure the voice request for Google Cloud Text-to-Speech
     const request = {
-      input: { text },
+      input: { 
+        text: confirmationText,
+       },
       voice: {
-        languageCode: voiceConfig.languageCode,
-        ssmlGender: "NEUTRAL" as const,
-        name: voiceConfig.name,
+        languageCode: "en-US",
+        name: "en-us-Chirp3-HD-Leda",
+        volumeGainDb: 10,
       },
       audioConfig: {
         audioEncoding: "MP3" as const,

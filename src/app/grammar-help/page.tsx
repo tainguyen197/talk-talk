@@ -102,6 +102,9 @@ const formatWithMarkdown = (text: string): string => {
   return formattedText;
 };
 
+const content =
+  "Steam rising from the kettle, sunlight seeping in through the crack of my floral shades, my mint green tea timer resting on the kitchen counter, an empty bottle sitting next to it, the criss-cross pattern on my gray wool socks. Five things I can see. Standing in the kitchen, bleary-eyed and groggy, I brush a pile of curls off my forehead, rest my elbow against the cold Formica counter, rub the soft flannel of my pajama shirt, and finally tap my foot against the terrazo";
+
 export default function GrammarHelp() {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -113,8 +116,7 @@ export default function GrammarHelp() {
     {
       id: "welcome",
       role: "assistant",
-      content:
-        "Hello! I'm your Vietnamese grammar assistant. Speak in Vietnamese, and I'll provide an English translation with grammar explanations.",
+      content: content,
       timestamp: Date.now(),
     },
   ]);
@@ -382,7 +384,7 @@ export default function GrammarHelp() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950">
-      <Header />
+      {/* <Header /> */}
       <main className="flex-1 flex flex-col max-w-xl mx-auto w-full">
         <div className="text-2xl font-bold text-center py-4 border-b border-gray-200 dark:border-gray-800">
           Grammar Help
