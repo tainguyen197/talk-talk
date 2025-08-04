@@ -405,35 +405,46 @@ export default function PracticeSpeaking() {
           {/* Input Area */}
           <div className="border-t-4 border-cyan-400 bg-gray-900 p-4 relative">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 animate-pulse"></div>
-            <div className="flex space-x-3">
+            <div className="flex flex-col space-y-3">
+              {/* Text Input */}
               <textarea
                 value={currentInput}
                 onChange={(e) => setCurrentInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder=">> Enter your response to continue the quest..."
-                className="flex-1 p-3 border-2 border-purple-400 bg-black text-green-300 font-mono rounded-lg focus:border-cyan-400 focus:shadow-lg focus:shadow-cyan-400/50 resize-none placeholder-gray-500 transition-all"
-                rows={2}
+                className="w-full p-4 border-2 border-purple-400 bg-black text-green-300 font-mono rounded-lg focus:border-cyan-400 focus:shadow-lg focus:shadow-cyan-400/50 resize-none placeholder-gray-500 transition-all text-base"
+                rows={3}
                 disabled={isLoading}
               />
-              <div className="flex flex-col space-y-2">
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                {/* Voice Button */}
                 <button
                   onClick={startVoiceRecording}
                   disabled={isLoading || isRecording}
-                  className={`px-4 py-2 border-2 font-mono font-bold transition-all transform hover:scale-105 ${
+                  className={`flex-1 py-4 px-6 border-2 font-mono font-bold transition-all transform hover:scale-105 text-lg ${
                     isRecording
                       ? "bg-red-900 border-red-400 text-red-100 shadow-lg shadow-red-400/50 animate-pulse"
                       : "bg-red-800 border-red-400 text-red-100 hover:bg-red-700 shadow-lg shadow-red-400/30"
                   } disabled:bg-gray-800 disabled:border-gray-600 disabled:text-gray-400 rounded-lg`}
                 >
-                  {isRecording ? "🎙️ REC..." : "🎤 VOICE"}
+                  {isRecording ? "🎙️ RECORDING..." : "🎤 VOICE INPUT"}
                 </button>
+
+                {/* Send Button */}
                 <button
                   onClick={handleSendMessage}
                   disabled={isLoading || !currentInput.trim()}
-                  className="px-4 py-2 bg-purple-800 border-2 border-purple-400 hover:bg-purple-700 disabled:bg-gray-800 disabled:border-gray-600 text-purple-100 disabled:text-gray-400 font-mono font-bold rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-purple-400/30"
+                  className="flex-1 py-4 px-6 bg-purple-800 border-2 border-purple-400 hover:bg-purple-700 disabled:bg-gray-800 disabled:border-gray-600 text-purple-100 disabled:text-gray-400 font-mono font-bold rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-purple-400/30 text-lg"
                 >
                   ⚡ SEND
                 </button>
+              </div>
+
+              {/* Mobile Tips */}
+              <div className="text-xs text-gray-400 font-mono text-center mt-2">
+                💡 Tip: Use voice input for faster responses on mobile!
               </div>
             </div>
           </div>

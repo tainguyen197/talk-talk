@@ -271,3 +271,42 @@ body {
   border-radius: 50%;
   animation: star-float 6s ease-in-out infinite;
 }
+
+/* Mobile-specific improvements */
+@media (max-width: 768px) {
+  .animated-retro-bg .star {
+    /* Reduce star count on mobile for better performance */
+  }
+  
+  /* Improve touch targets */
+  button {
+    min-height: 44px; /* Apple's recommended minimum touch target size */
+  }
+  
+  /* Better text input on mobile */
+  textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+    line-height: 1.4;
+  }
+  
+  /* Improve button spacing on mobile */
+  .flex.space-x-3 > * + * {
+    margin-left: 0.75rem;
+  }
+  
+  /* Better mobile scrolling */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Touch-friendly hover states */
+@media (hover: none) {
+  button:hover {
+    transform: none;
+  }
+  
+  button:active {
+    transform: scale(0.98);
+  }
+}
