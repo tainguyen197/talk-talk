@@ -6,6 +6,7 @@ import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { GameBoard } from "@/components/game/GameBoard";
 import { PracticeMessage } from "@/components/practice/PracticeMessage";
 import { RetroBackground } from "@/components/ui/RetroBackground";
+import { speakText } from "@/lib/utils/audioUtils";
 
 interface Message {
   id: string;
@@ -27,10 +28,28 @@ export default function PracticeSpeaking() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { gameState, handleGameProgression, resetGame } = useGameState();
   const { isRecording, startVoiceRecording } = useVoiceInput();
+
+  // Function to handle user interaction and enable audio
+  const handleUserInteraction = () => {
+    if (!hasUserInteracted) {
+      setHasUserInteracted(true);
+    }
+  };
+
+  // Function to play audio sequentially
+  const playAudioSequentially = async (texts: string[]) => {
+    for (const text of texts) {
+      setIsAudioPlaying(true);
+      await speakText(text);
+      setIsAudioPlaying(false);
+    }
+  };
 
   useEffect(() => {
     generateInitialQuestion();
@@ -62,13 +81,18 @@ export default function PracticeSpeaking() {
           sender: "ai",
         };
         setMessages([aiMessage]);
+
+        // Only speak the initial question if user has interacted
+        if (hasUserInteracted) {
+          await playAudioSequentially([data.question]);
+        }
       }
     } catch (error) {
       console.error("Error generating question:", error);
       // Fallback question
       const fallbackMessage: Message = {
         id: Date.now().toString(),
-        text: "Hello! Let's practice speaking English together. What are you doing today?",
+        text: "Ops, something went wrong. Please try again.",
         sender: "ai",
       };
       setMessages([fallbackMessage]);
@@ -125,6 +149,27 @@ export default function PracticeSpeaking() {
         // Handle game progression
         handleGameProgression(isCorrect);
 
+        // Generate feedback text for voice
+        const feedbackText = isCorrect
+          ? `Great job! Your answer was correct. ${evaluationData.feedback.overall}`
+          : `Let me help you improve. ${evaluationData.feedback.overall}`;
+
+        // Speak the feedback
+        setIsAudioPlaying(true);
+        await speakText(feedbackText);
+        setIsAudioPlaying(false);
+
+        // Small delay before "done" message
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        // Speak "done" message
+        setIsAudioPlaying(true);
+        await speakText("Done. Here's your next question.");
+        setIsAudioPlaying(false);
+
+        // Small delay before next question
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
         // Generate next question
         const questionResponse = await fetch(
           "/api/practice-speaking/question",
@@ -149,6 +194,9 @@ export default function PracticeSpeaking() {
             sender: "ai",
           };
           setMessages((prev) => [...prev, aiMessage]);
+
+          // Speak the next question
+          await playAudioSequentially([questionData.question]);
         }
       }
     } catch (error) {
@@ -160,19 +208,135 @@ export default function PracticeSpeaking() {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+      handleUserInteraction();
       handleSendMessage();
     }
   };
 
-  const handleVoiceInput = (transcript: string) => {
+  const handleVoiceInput = async (transcript: string) => {
     setCurrentInput(transcript);
+
+    // Automatically send the message after voice input
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: transcript,
+      sender: "user",
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setCurrentInput("");
+    setIsLoading(true);
+
+    try {
+      // Evaluate the user's response
+      const evaluationResponse = await fetch(
+        "/api/practice-speaking/evaluate",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userResponse: transcript,
+            conversationHistory: messages,
+          }),
+        }
+      );
+
+      if (evaluationResponse.ok) {
+        const evaluationData = await evaluationResponse.json();
+
+        // Determine if answer is correct (simple heuristic)
+        const isCorrect =
+          !evaluationData.feedback.corrections ||
+          evaluationData.feedback.corrections.length === 0;
+
+        // Update the user message with feedback
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === userMessage.id
+              ? { ...msg, feedback: { ...evaluationData.feedback, isCorrect } }
+              : msg
+          )
+        );
+
+        // Handle game progression
+        handleGameProgression(isCorrect);
+
+        // Generate feedback text for voice
+        const feedbackText = isCorrect
+          ? `Great job! Your answer was correct. ${evaluationData.feedback.overall}`
+          : `Let me help you improve. ${evaluationData.feedback.overall}`;
+
+        // Speak the feedback
+        setIsAudioPlaying(true);
+        await speakText(feedbackText);
+        setIsAudioPlaying(false);
+
+        // Small delay before "done" message
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        // Speak "done" message
+        setIsAudioPlaying(true);
+        await speakText("Done. Here's your next question.");
+        setIsAudioPlaying(false);
+
+        // Small delay before next question
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        // Generate next question
+        const questionResponse = await fetch(
+          "/api/practice-speaking/question",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              context: "continuing_conversation",
+              conversationHistory: [...messages, userMessage],
+              lastUserResponse: transcript,
+            }),
+          }
+        );
+
+        if (questionResponse.ok) {
+          const questionData = await questionResponse.json();
+          const aiMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            text: questionData.question,
+            sender: "ai",
+          };
+          setMessages((prev) => [...prev, aiMessage]);
+
+          // Speak the next question
+          await playAudioSequentially([questionData.question]);
+        }
+      }
+    } catch (error) {
+      console.error("Error processing voice message:", error);
+    }
+    setIsLoading(false);
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-black relative overflow-x-hidden">
+    <div
+      className="flex flex-col min-h-screen bg-black relative overflow-x-hidden"
+      onClick={handleUserInteraction}
+    >
       <RetroBackground />
 
       <main className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-4 relative z-10">
+        {/* Audio Status Indicator */}
+        {!hasUserInteracted && (
+          <div className="mb-4 p-3 bg-yellow-800 border-2 border-yellow-400 rounded-lg shadow-lg shadow-yellow-400/50">
+            <div className="flex items-center space-x-2 font-mono text-yellow-300">
+              <span className="text-sm">
+                🔊 Click anywhere to enable audio feedback
+              </span>
+            </div>
+          </div>
+        )}
         <GameBoard gameState={gameState} onReset={resetGame} />
 
         {/* Messages Container */}
@@ -206,6 +370,7 @@ export default function PracticeSpeaking() {
                 </div>
               </div>
             )}
+
             <div ref={messagesEndRef} />
           </div>
 
@@ -216,33 +381,48 @@ export default function PracticeSpeaking() {
               {/* Text Input */}
               <textarea
                 value={currentInput}
-                onChange={(e) => setCurrentInput(e.target.value)}
+                onChange={(e) => {
+                  handleUserInteraction();
+                  setCurrentInput(e.target.value);
+                }}
                 onKeyPress={handleKeyPress}
                 placeholder=">> Enter your response to continue the quest..."
                 className="w-full p-4 border-2 border-purple-400 bg-black text-green-300 font-mono rounded-lg focus:border-cyan-400 focus:shadow-lg focus:shadow-cyan-400/50 resize-none placeholder-gray-500 transition-all text-base"
                 rows={3}
-                disabled={isLoading}
+                disabled={isLoading || isAudioPlaying}
               />
 
               {/* Action Buttons */}
               <div className="flex space-x-3">
                 {/* Voice Button */}
                 <button
-                  onClick={() => startVoiceRecording(handleVoiceInput)}
-                  disabled={isLoading || isRecording}
+                  onClick={() => {
+                    handleUserInteraction();
+                    startVoiceRecording(handleVoiceInput);
+                  }}
+                  disabled={isLoading || isRecording || isAudioPlaying}
                   className={`flex-1 py-4 px-6 border-2 font-mono font-bold transition-all transform hover:scale-105 text-lg ${
                     isRecording
                       ? "bg-red-900 border-red-400 text-red-100 shadow-lg shadow-red-400/50 animate-pulse"
+                      : isAudioPlaying
+                      ? "bg-green-800 border-green-400 text-green-100 shadow-lg shadow-green-400/50 animate-pulse"
                       : "bg-red-800 border-red-400 text-red-100 hover:bg-red-700 shadow-lg shadow-red-400/30"
                   } disabled:bg-gray-800 disabled:border-gray-600 disabled:text-gray-400 rounded-lg`}
                 >
-                  {isRecording ? "🎙️ RECORDING..." : "🎤 VOICE INPUT"}
+                  {isRecording
+                    ? "🎙️ RECORDING..."
+                    : isAudioPlaying
+                    ? "🔊 SPEAKING..."
+                    : "🎤 VOICE INPUT"}
                 </button>
 
                 {/* Send Button */}
                 <button
-                  onClick={handleSendMessage}
-                  disabled={isLoading || !currentInput.trim()}
+                  onClick={() => {
+                    handleUserInteraction();
+                    handleSendMessage();
+                  }}
+                  disabled={isLoading || !currentInput.trim() || isAudioPlaying}
                   className="flex-1 py-4 px-6 bg-purple-800 border-2 border-purple-400 hover:bg-purple-700 disabled:bg-gray-800 disabled:border-gray-600 text-purple-100 disabled:text-gray-400 font-mono font-bold rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-purple-400/30 text-lg"
                 >
                   ⚡ SEND

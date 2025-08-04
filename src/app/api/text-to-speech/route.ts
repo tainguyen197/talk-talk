@@ -11,7 +11,7 @@ const languageVoiceMap: Record<
 > = {
   "en-US": {
     languageCode: "en-US",
-   "name": "en-us-Chirp3-HD-Leda",
+    name: "en-us-Chirp3-HD-Leda",
     speed: 0.95,
     region: "us",
   },
@@ -22,8 +22,6 @@ const languageVoiceMap: Record<
     region: "asia-southeast1",
   },
 };
-
-const confirmationText = "The alarm blared! Red lights flashed, painting the corridor in a chaotic glow. 'Go, go, go!' I yelled, vaulting over overturned crates. Footsteps pounded behind us. We burst through the heavy door, straight onto the platform. The train was already moving, picking up speed. No time to think. 'Jump!' I screamed, launching myself into the gap. We made it. Just barely."
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,12 +36,12 @@ export async function POST(req: NextRequest) {
 
     // Configure the voice request for Google Cloud Text-to-Speech
     const request = {
-      input: { 
-        text: confirmationText,
-       },
+      input: {
+        text: text,
+      },
       voice: {
-        languageCode: "en-US",
-        name: "en-us-Chirp3-HD-Leda",
+        languageCode: voiceConfig.languageCode,
+        name: voiceConfig.name,
         volumeGainDb: 10,
       },
       audioConfig: {

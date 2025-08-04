@@ -78,12 +78,12 @@ export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
  * Convert text to speech and play the audio
  * @param text The text to convert to speech
  * @param language The language code for speech synthesis (e.g., 'en-US', 'vi-VN')
- * @returns A promise that resolves when the audio starts playing
+ * @returns A promise that resolves when the audio finishes playing
  */
 export const speakText = async (
   text: string,
   language: string = "en-US"
-): Promise<HTMLAudioElement> => {
+): Promise<void> => {
   try {
     const response = await fetch("/api/text-to-speech", {
       method: "POST",
@@ -101,14 +101,30 @@ export const speakText = async (
     const audioUrl = URL.createObjectURL(audioBlob);
     const audio = new Audio(audioUrl);
 
-    audio.play();
+    // Return a promise that resolves when the audio finishes
+    return new Promise((resolve) => {
+      // Try to play the audio with proper error handling
+      audio.play().catch((playError) => {
+        console.warn(
+          "Audio autoplay blocked. User interaction required:",
+          playError
+        );
+        // Resolve anyway so the flow continues
+        resolve();
+      });
 
-    // Clean up the URL object when the audio is done playing
-    audio.addEventListener("ended", () => {
-      URL.revokeObjectURL(audioUrl);
+      // Clean up the URL object when the audio is done playing
+      audio.addEventListener("ended", () => {
+        URL.revokeObjectURL(audioUrl);
+        resolve();
+      });
+
+      // Also resolve if there's an error
+      audio.addEventListener("error", () => {
+        URL.revokeObjectURL(audioUrl);
+        resolve();
+      });
     });
-
-    return audio;
   } catch (error) {
     console.error("Error speaking text:", error);
     throw error;

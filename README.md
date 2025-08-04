@@ -7,6 +7,7 @@ TalkTutor is an interactive, voice-powered web app built with Next.js 15 that he
 - **🎤 Speak to Learn** - Say anything — the app uses OpenAI Whisper to understand your spoken English.
 - **🤖 Smart Chatbot Replies** - Get personalized, helpful responses powered by ChatGPT.
 - **🔊 Natural Voice Feedback** - Hear responses in a smooth, human-like voice with Text-to-Speech (TTS).
+- **🎮 Interactive Speaking Game** - Practice speaking with a gamified adventure where voice input triggers AI feedback and next questions.
 - **📝 Real-Time Transcripts** - See what you said and what the AI replied, improving reading and listening skills.
 - **🌐 Lightweight and Fast** - Built with Next.js 15 App Router, optimized for performance and scalability.
 
@@ -63,12 +64,23 @@ TalkTutor is an interactive, voice-powered web app built with Next.js 15 that he
 
 ## 📝 Usage
 
+### Basic Chat Mode
+
 1. Allow microphone access when prompted
 2. Click the microphone button to start speaking
 3. Speak clearly in English
 4. Click the stop button when finished
 5. Wait for TalkTutor to process and respond
 6. Continue the conversation to practice!
+
+### Practice Speaking Game
+
+1. Navigate to the Practice Speaking page
+2. Use voice input to answer questions
+3. Get instant voice feedback on your pronunciation and grammar
+4. Hear the next question automatically
+5. Progress through the game by speaking correctly
+6. Unlock doors, avoid traps, and find treasures through speaking!
 
 ## 📄 License
 

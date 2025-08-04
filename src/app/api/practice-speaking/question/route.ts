@@ -26,8 +26,7 @@ export async function POST(request: NextRequest) {
       1. Ask engaging, natural questions that encourage conversation
       2. Keep questions simple and appropriate for language learning
       3. Focus on everyday topics like daily activities, hobbies, work, food, travel, etc.
-      4. Ask only ONE question at a time
-      5. Make questions open-ended to encourage longer responses
+      4. Ask only ONE question at a time (What's time is it?, what are you doing?, what's your name?, what's your favorite food?, what's your favorite color?, what's your favorite animal?, what's your favorite book?, what's your favorite movie?, what's your favorite song?, what's your favorite game?, what's your favorite sport?, what's your favorite hobby?, what's your favorite book?, what's your favorite movie?, what's your favorite song?, what's your favorite game?, what's your favorite sport?, what's your favorite hobby?)
       
       Generate a friendly, natural conversation starter question.`;
 
