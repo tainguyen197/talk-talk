@@ -302,10 +302,10 @@ export default function GrammarHelp() {
       try {
         // Speak translation in English
         setSpeakingLanguage("en-US");
-        const audio = await speakText(grammarData.translation, "en-US");
+        const audio: any = await speakText(grammarData.translation, "en-US");
 
         // When translation finishes, speak the explanation in Vietnamese
-        audio.addEventListener("ended", async () => {
+        audio?.addEventListener("ended", async () => {
           try {
             setSpeakingLanguage("vi-VN");
             // Convert English grammar explanation to Vietnamese before speaking
