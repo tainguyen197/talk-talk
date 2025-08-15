@@ -1,5 +1,6 @@
 import TodayTopic from "@/components/learning/TodayTopic";
 import PWAInstall from "@/components/PWAInstall";
+import PWANotification from "@/components/PWANotification";
 
 export default function Home() {
   return (
@@ -7,6 +8,7 @@ export default function Home() {
       <main className="flex-1 overflow-hidden">
         <TodayTopic />
         <PWAInstall />
+        <PWANotification />
       </main>
     </div>
   );
