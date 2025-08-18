@@ -238,32 +238,27 @@ export default function TOEICPractice() {
 
   if (isGeneratingQuestions) {
     return (
-      <div className="flex flex-col min-h-screen bg-black relative overflow-hidden">
+      <div className="flex flex-col min-h-screen relative overflow-hidden">
         <RetroBackground />
         <Header />
         <main className="flex-1 flex items-center justify-center relative z-10">
-          <div className="retro-card border-cyan-400 rounded-lg p-8 shadow-2xl shadow-cyan-400/50 animate-pulse">
+          <div className=" rounded-lg p-8">
             <div className="text-center">
               <div className="flex justify-center space-x-2 mb-6">
-                <div className="w-4 h-4 bg-cyan-400 rounded-full animate-bounce"></div>
+                <div className="w-4 h-4 bg-orange-400 rounded-full"></div>
                 <div
-                  className="w-4 h-4 bg-cyan-400 rounded-full animate-bounce"
+                  className="w-4 h-4 bg-orange-400 rounded-full"
                   style={{ animationDelay: "0.1s" }}
                 ></div>
                 <div
-                  className="w-4 h-4 bg-cyan-400 rounded-full animate-bounce"
+                  className="w-4 h-4 bg-orange-400 rounded-full"
                   style={{ animationDelay: "0.2s" }}
                 ></div>
               </div>
-              <h2 className="text-2xl font-mono text-cyan-300 mb-4 animate-pulse">
-                🎮 LOADING TOEIC ADVENTURE
-              </h2>
+
               <p className="text-green-300 font-mono text-lg">
-                Preparing your retro B2 TOEIC adventure... 🕹️
+                Preparing your adventure... 🕹️
               </p>
-              <div className="mt-6 w-64 h-2 bg-gray-800 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-cyan-400 to-green-400 rounded-full animate-pulse"></div>
-              </div>
             </div>
           </div>
         </main>
@@ -443,62 +438,15 @@ export default function TOEICPractice() {
 
       <main className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-4 relative z-10">
         {/* Progress Header */}
-        <div className="retro-card border-cyan-400 rounded-lg p-6 mb-6 shadow-2xl shadow-cyan-400/50 transform transition-transform duration-300 animate-fade-in">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-mono text-cyan-300 animate-pulse">
-              🎯 TOEIC PRACTICE (B2)
-            </h1>
-            <div className="flex items-center space-x-4">
-              <span className="text-lg font-mono text-green-400">
-                Question {currentQuestionIndex + 1} of {questions.length}
-              </span>
-
-              {/* Voice Status Indicator */}
-              {isVoiceEnabled && (
-                <div
-                  className={`w-6 h-6 relative ${
-                    isPlaying ? "opacity-100" : "opacity-50"
-                  }`}
-                >
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-orange-400 text-lg">🔊</span>
-                  </div>
-                  {isPlaying && (
-                    <>
-                      <div className="absolute inset-0 w-6 h-6 bg-orange-400 rounded-full opacity-20 animate-ping"></div>
-                      <div className="absolute inset-0 w-6 h-6 bg-orange-400 rounded-full opacity-10 animate-pulse"></div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="w-full h-4 bg-gray-800 border-2 border-gray-600 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-green-400 via-cyan-400 to-purple-400 transition-all duration-500 ease-out"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-        </div>
 
         {/* Question Content */}
         {currentQuestion && (
-          <div className="flex-1 retro-card border-purple-400 rounded-lg shadow-2xl shadow-purple-400/50 p-8 transform transition-transform duration-300 animate-scale-in">
+          <div className="flex-1 border-purple-400 rounded-lg shadow-2xl shadow-purple-400/50 p-8 transform transition-transform duration-300 animate-scale-in">
             <div className="mb-8">
               <div className="flex items-center justify-between mb-6">
-                <span className="text-lg font-mono text-purple-300 bg-purple-900/50 backdrop-blur-sm px-4 py-2 rounded-full border border-purple-400 animate-pulse">
-                  {currentQuestion.category.toUpperCase()}
+                <span className="text-md font-mono text-purple-300 bg-purple-900/50 backdrop-blur-sm px-4 py-2 rounded-full border border-purple-400 animate-pulse">
+                  {currentQuestion.category}
                 </span>
-                <span className="text-lg font-mono text-yellow-300 bg-yellow-900/20 backdrop-blur-sm px-4 py-2 rounded-full border border-yellow-400">
-                  B2 LEVEL
-                </span>
-              </div>
-
-              <div className="flex items-start mb-8">
-                <h2 className="text-xl font-mono text-green-300 leading-relaxed">
-                  {currentQuestion.question}
-                </h2>
-
                 {/* Listen Again Button */}
                 {isVoiceEnabled && (
                   <button
@@ -514,6 +462,12 @@ export default function TOEICPractice() {
                     <span className="text-xl">🔊</span>
                   </button>
                 )}
+              </div>
+
+              <div className="flex items-start mb-8">
+                <h2 className="text-lg font-mono text-green-300 leading-relaxed">
+                  {currentQuestion.question}
+                </h2>
               </div>
 
               <div className="space-y-4">
@@ -536,10 +490,10 @@ export default function TOEICPractice() {
                         : "bg-gray-800/80 backdrop-blur-sm border-gray-600 text-gray-100 hover:bg-gray-700/80 hover:border-gray-500 hover:shadow-lg"
                     } disabled:cursor-not-allowed`}
                   >
-                    <span className="text-yellow-400 mr-4 text-xl font-bold">
+                    <span className="text-yellow-400 mr-4 text-md font-bold">
                       {String.fromCharCode(65 + index)}.
                     </span>
-                    <span className="text-lg">{option}</span>
+                    <span className="text-md">{option}</span>
                   </button>
                 ))}
               </div>
@@ -589,7 +543,7 @@ export default function TOEICPractice() {
                   ? "⏳ PROCESSING..."
                   : isPlaying
                   ? "🔊 LISTENING..."
-                  : "✅ SUBMIT ANSWER"}
+                  : "SUBMIT"}
               </button>
             )}
 

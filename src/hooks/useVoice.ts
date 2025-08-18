@@ -18,38 +18,38 @@ export const useVoice = () => {
     console.log("speaking text", text);
     if (!isVoiceEnabled || !text.trim() || isPlaying) return;
 
-    try {
-      setIsPlaying(true);
+    setIsPlaying(true);
 
+    try {
       const response = await fetch("/api/text-to-speech", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
 
-      if (response.ok) {
-        const audioBlob = await response.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
+      if (!response.ok) throw new Error("TTS request failed");
 
-        return new Promise((resolve) => {
-          audio.play().then(() => {
-            audio.onended = () => {
-              setIsPlaying(false);
-              URL.revokeObjectURL(audioUrl);
-              resolve(void 0);
-            };
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
 
-            audio.play();
-          });
+      return new Promise<void>((resolve) => {
+        const cleanup = () => {
+          setIsPlaying(false);
+          URL.revokeObjectURL(audioUrl);
+          resolve();
+        };
+
+        audio.addEventListener("ended", cleanup, { once: true });
+        audio.addEventListener("error", cleanup, { once: true });
+
+        audio.play().catch(() => {
+          // Autoplay blocked or other error — clear UI state
+          cleanup();
         });
-      } else {
-        setIsPlaying(false);
-      }
-    } catch (error) {
-      console.error("Error playing audio:", error);
+      });
+    } catch (err) {
+      console.error("Error playing audio:", err);
       setIsPlaying(false);
     }
   };
