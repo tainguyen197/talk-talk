@@ -34,6 +34,7 @@ export default function TOEICPractice() {
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [showParticles, setShowParticles] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
 
   const { gameState, handleGameProgression, resetGame } = useGameState();
   const {
@@ -52,13 +53,25 @@ export default function TOEICPractice() {
 
   // Speak the current question when it changes
   useEffect(() => {
-    if (questions.length > 0 && !isGeneratingQuestions && !testCompleted) {
+    if (
+      questions.length > 0 &&
+      !isGeneratingQuestions &&
+      !testCompleted &&
+      hasStarted
+    ) {
       const currentQuestion = questions[currentQuestionIndex];
       if (currentQuestion) {
         speakQuestion(currentQuestion.question, currentQuestionIndex + 1);
       }
     }
-  }, [currentQuestionIndex, questions, isGeneratingQuestions, testCompleted]);
+  }, [
+    currentQuestionIndex,
+    questions,
+    isGeneratingQuestions,
+    testCompleted,
+    hasStarted,
+    // speakQuestion,
+  ]);
 
   // Speak the test results when completed
   useEffect(() => {
@@ -216,6 +229,7 @@ export default function TOEICPractice() {
     setShowExplanation(false);
     setTestResults([]);
     setTestCompleted(false);
+    setHasStarted(false);
     resetGame();
     generateQuestions();
   };
@@ -263,6 +277,35 @@ export default function TOEICPractice() {
                 Preparing your adventure... 🕹️
               </p>
             </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Show start screen once questions are ready but before the user starts
+  if (!hasStarted && questions.length > 0 && !testCompleted) {
+    return (
+      <div className="flex flex-col min-h-screen bg-black relative overflow-hidden">
+        <RetroBackground />
+        <Header />
+        <main className="flex-1 flex items-center justify-center relative z-10">
+          <div className=" border-cyan-400 rounded-lg p-10 text-center animate-fade-in">
+            <h1 className="text-3xl font-mono text-green-300 mb-4">
+              Questions are ready!
+            </h1>
+            <p className="text-md font-mono text-purple-200 mb-8">
+              Click to begin when you&apos;re ready.
+            </p>
+            <button
+              onClick={() => {
+                setHasStarted(true);
+                setQuestionStartTime(Date.now());
+              }}
+              className="py-4 px-10 bg-green-800/80 backdrop-blur-sm border-2 border-green-400 hover:bg-green-700/80 text-green-100 font-mono font-bold rounded-lg transition-all transform hover:scale-105 shadow-2xl shadow-green-400/30 hover:shadow-green-400/50 text-xl"
+            >
+              🚀 START NOW
+            </button>
           </div>
         </main>
       </div>

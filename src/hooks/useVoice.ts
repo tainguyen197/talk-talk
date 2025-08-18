@@ -14,7 +14,10 @@ export const useVoice = () => {
     }
   }, []);
 
-  const speakText = async (text: string) => {
+  const speakText = async (
+    text: string,
+    options?: { speed?: number; language?: string; voice?: string }
+  ) => {
     console.log("speaking text", text);
     if (!isVoiceEnabled || !text.trim() || isPlaying) return;
 
@@ -24,7 +27,12 @@ export const useVoice = () => {
       const response = await fetch("/api/text-to-speech", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({
+          text,
+          speed: options?.speed,
+          language: options?.language,
+          voice: options?.voice,
+        }),
       });
 
       if (!response.ok) throw new Error("TTS request failed");
@@ -62,7 +70,7 @@ export const useVoice = () => {
       textToSpeak = `Question ${questionNumber}. ${question}`;
     }
 
-    await speakText(textToSpeak);
+    await speakText(textToSpeak, { speed: 1.2 });
   };
 
   const speakFeedback = async (feedback: string, isCorrect: boolean) => {
@@ -75,14 +83,14 @@ export const useVoice = () => {
       textToSpeak = `Let me explain. ${feedback}`;
     }
 
-    await speakText(textToSpeak);
+    await speakText(textToSpeak, { speed: 1.15 });
   };
 
   const speakProgress = async (current: number, total: number) => {
     if (!isVoiceEnabled) return;
 
     const textToSpeak = `Question ${current} of ${total}`;
-    await speakText(textToSpeak);
+    await speakText(textToSpeak, { speed: 1.15 });
   };
 
   const speakCompletion = async (
@@ -95,7 +103,7 @@ export const useVoice = () => {
     const percentage = Math.round((score / total) * 100);
     const textToSpeak = `Test completed! You scored ${score} out of ${total}, which is ${percentage} percent. Your grade is ${grade}.`;
 
-    await speakText(textToSpeak);
+    await speakText(textToSpeak, { speed: 1.1 });
   };
 
   return {

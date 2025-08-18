@@ -21,7 +21,7 @@ const languageVoiceMap: Record<
 
 export async function POST(req: NextRequest) {
   try {
-    const { text, language = "en-US", voice } = await req.json();
+    const { text, language = "en-US", voice, speed } = await req.json();
 
     if (!text) {
       return NextResponse.json({ error: "Text is required" }, { status: 400 });
@@ -42,7 +42,10 @@ export async function POST(req: NextRequest) {
         input: text,
         voice: voice ?? voiceConfig.voice,
         response_format: "mp3",
-        speed: voiceConfig.speed,
+        speed:
+          typeof speed === "number" && speed > 0
+            ? speed
+            : Math.min(1.15, voiceConfig.speed + 0.15),
         instructions: voiceConfig.instructions,
       }),
     });
