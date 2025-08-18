@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import VoiceToggle from "./VoiceToggle";
 
 export default function Header() {
   const [isInfoOpen, setIsInfoOpen] = useState(false);
@@ -16,6 +17,11 @@ export default function Header() {
   const closeMenu = () => {
     setIsMenuOpen(false);
   };
+
+  const handleVoiceChange = useCallback((enabled: boolean) => {
+    // This will be used by other components through localStorage
+    console.log("Voice enabled:", enabled);
+  }, []);
 
   const navigationItems = [
     { href: "/", label: "Today's Topic" },
@@ -38,7 +44,9 @@ export default function Header() {
                 <span
                   className="text-2xl drop-shadow-lg animate-bounce"
                   style={{ animationDuration: "2s" }}
-                ></span>
+                >
+                  🔥
+                </span>
                 {/* Fire particles effect */}
                 <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-300 rounded-full animate-ping opacity-70"></div>
                 <div
@@ -98,6 +106,12 @@ export default function Header() {
               {item.label}
             </Link>
           ))}
+
+          {/* Voice Toggle for Desktop */}
+          <div className="border-l border-gray-300 dark:border-gray-700 pl-3 ml-1">
+            <VoiceToggle onVoiceChange={handleVoiceChange} />
+          </div>
+
           <button
             onClick={() => setIsInfoOpen(!isInfoOpen)}
             className="text-gray-600 dark:text-gray-300 hover:text-orange-400 transition-all duration-300 hover:scale-110"
@@ -108,7 +122,10 @@ export default function Header() {
         </div>
 
         {/* Mobile Hamburger Menu */}
-        <div className="md:hidden flex items-center space-x-2">
+        <div className="md:hidden flex items-center">
+          {/* Voice Toggle for Mobile */}
+          <VoiceToggle onVoiceChange={handleVoiceChange} />
+
           <button
             onClick={toggleMenu}
             className="relative p-2 focus:outline-none"
@@ -226,6 +243,7 @@ export default function Header() {
                 <li>10 multiple-choice questions</li>
                 <li>Detailed explanations</li>
                 <li>Retro gaming experience</li>
+                <li>Voice narration support</li>
               </ul>
             </div>
           </div>

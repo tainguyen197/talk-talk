@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useGameState } from "@/hooks/useGameState";
+import { useVoice } from "@/hooks/useVoice";
 import { GameBoard } from "@/components/game/GameBoard";
 import { RetroBackground } from "@/components/ui/RetroBackground";
 import Header from "@/components/Header";
@@ -34,10 +35,54 @@ export default function TOEICPractice() {
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
 
   const { gameState, handleGameProgression, resetGame } = useGameState();
+  const {
+    isVoiceEnabled,
+    isPlaying,
+    speakQuestion,
+    speakFeedback,
+    speakProgress,
+    speakCompletion,
+  } = useVoice();
 
   useEffect(() => {
     generateQuestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Speak the current question when it changes
+  useEffect(() => {
+    if (questions.length > 0 && !isGeneratingQuestions && !testCompleted) {
+      const currentQuestion = questions[currentQuestionIndex];
+      if (currentQuestion) {
+        // Add a small delay to ensure the UI has updated
+        const timer = setTimeout(() => {
+          speakQuestion(currentQuestion.question, currentQuestionIndex + 1);
+        }, 500);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [
+    currentQuestionIndex,
+    questions,
+    isGeneratingQuestions,
+    testCompleted,
+    speakQuestion,
+  ]);
+
+  // Speak the test results when completed
+  useEffect(() => {
+    if (testCompleted) {
+      const { correctAnswers, totalQuestions, grade } = getScoreAndGrade();
+      // Add a small delay to ensure the UI has updated
+      const timer = setTimeout(() => {
+        speakCompletion(correctAnswers, totalQuestions, grade);
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testCompleted, speakCompletion]);
 
   const generateQuestions = async () => {
     setIsGeneratingQuestions(true);
@@ -124,6 +169,9 @@ export default function TOEICPractice() {
     setShowExplanation(true);
     setIsLoading(true);
 
+    // Speak the explanation
+    speakFeedback(currentQuestion.explanation, isCorrect);
+
     // Show explanation for 3 seconds, then move to next question
     setTimeout(() => {
       if (currentQuestionIndex < questions.length - 1) {
@@ -131,12 +179,15 @@ export default function TOEICPractice() {
         setSelectedAnswer(null);
         setShowExplanation(false);
         setQuestionStartTime(Date.now());
+
+        // Announce progress
+        speakProgress(currentQuestionIndex + 2, questions.length);
       } else {
         setTestCompleted(true);
         updateStreak();
       }
       setIsLoading(false);
-    }, 3000);
+    }, 5000); // Increased to 5 seconds to allow for voice explanation
   };
 
   const updateStreak = () => {
@@ -226,7 +277,7 @@ export default function TOEICPractice() {
         <RetroBackground />
         <Header />
         <main className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-4 relative z-10">
-          <GameBoard gameState={gameState} onReset={resetGame} />
+          {/* <GameBoard gameState={gameState} onReset={resetGame} /> */}
 
           <div className="flex-1 bg-gray-900 border-4 border-cyan-400 rounded-lg shadow-lg shadow-cyan-400/50 p-6">
             <div className="text-center mb-6">
@@ -329,9 +380,30 @@ export default function TOEICPractice() {
             <h1 className="text-xl font-mono text-cyan-300">
               🎯 TOEIC PRACTICE (B2)
             </h1>
-            <span className="text-sm font-mono text-green-400">
-              Question {currentQuestionIndex + 1} of {questions.length}
-            </span>
+            <div className="flex items-center">
+              <span className="text-sm font-mono text-green-400 mr-2">
+                Question {currentQuestionIndex + 1} of {questions.length}
+              </span>
+
+              {/* Voice Status Indicator */}
+              {isVoiceEnabled && (
+                <div
+                  className={`w-5 h-5 relative ${
+                    isPlaying ? "opacity-100" : "opacity-50"
+                  }`}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-orange-400 text-sm">🔊</span>
+                  </div>
+                  {isPlaying && (
+                    <>
+                      <div className="absolute inset-0 w-5 h-5 bg-orange-400 rounded-full opacity-20 animate-ping"></div>
+                      <div className="absolute inset-0 w-5 h-5 bg-orange-400 rounded-full opacity-10 animate-pulse"></div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <div className="w-full h-3 bg-gray-800 border-2 border-gray-600 rounded-full overflow-hidden">
             <div
@@ -354,16 +426,34 @@ export default function TOEICPractice() {
                 </span>
               </div>
 
-              <h2 className="text-lg font-mono text-green-300 mb-6 leading-relaxed">
-                {currentQuestion.question}
-              </h2>
+              <div className="flex items-start mb-6">
+                <h2 className="text-lg font-mono text-green-300 leading-relaxed">
+                  {currentQuestion.question}
+                </h2>
+
+                {/* Listen Again Button */}
+                {isVoiceEnabled && (
+                  <button
+                    onClick={() => speakQuestion(currentQuestion.question)}
+                    disabled={isPlaying}
+                    className={`ml-2 p-1 rounded-full ${
+                      isPlaying
+                        ? "bg-gray-700 text-gray-400"
+                        : "bg-orange-900 text-orange-300 hover:bg-orange-800"
+                    } transition-colors`}
+                    title="Listen again"
+                  >
+                    <span className="text-sm">🔊</span>
+                  </button>
+                )}
+              </div>
 
               <div className="space-y-3">
                 {currentQuestion.options.map((option, index) => (
                   <button
                     key={index}
                     onClick={() => handleAnswerSelect(index)}
-                    disabled={showExplanation}
+                    disabled={showExplanation || isPlaying}
                     className={`w-full p-4 text-left border-2 rounded-lg font-mono transition-all transform hover:scale-105 ${
                       selectedAnswer === index
                         ? showExplanation
@@ -388,9 +478,32 @@ export default function TOEICPractice() {
 
             {showExplanation && (
               <div className="bg-blue-900 border-2 border-blue-400 rounded-lg p-4 mb-4 shadow-lg shadow-blue-400/50">
-                <h3 className="text-lg font-mono text-blue-300 mb-2">
-                  💡 EXPLANATION
-                </h3>
+                <div className="flex items-start">
+                  <h3 className="text-lg font-mono text-blue-300 mb-2">
+                    💡 EXPLANATION
+                  </h3>
+
+                  {/* Listen Again Button for Explanation */}
+                  {isVoiceEnabled && (
+                    <button
+                      onClick={() =>
+                        speakFeedback(
+                          currentQuestion.explanation,
+                          selectedAnswer === currentQuestion.correctAnswer
+                        )
+                      }
+                      disabled={isPlaying}
+                      className={`ml-2 p-1 rounded-full ${
+                        isPlaying
+                          ? "bg-gray-700 text-gray-400"
+                          : "bg-blue-700 text-blue-300 hover:bg-blue-600"
+                      } transition-colors`}
+                      title="Listen to explanation again"
+                    >
+                      <span className="text-sm">🔊</span>
+                    </button>
+                  )}
+                </div>
                 <p className="text-blue-100 font-mono text-sm leading-relaxed">
                   {currentQuestion.explanation}
                 </p>
@@ -400,10 +513,14 @@ export default function TOEICPractice() {
             {!showExplanation && (
               <button
                 onClick={handleSubmitAnswer}
-                disabled={selectedAnswer === null || isLoading}
+                disabled={selectedAnswer === null || isLoading || isPlaying}
                 className="w-full py-4 px-6 bg-green-800 border-2 border-green-400 hover:bg-green-700 disabled:bg-gray-800 disabled:border-gray-600 text-green-100 disabled:text-gray-400 font-mono font-bold rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-green-400/30 text-lg"
               >
-                {isLoading ? "⏳ PROCESSING..." : "✅ SUBMIT ANSWER"}
+                {isLoading
+                  ? "⏳ PROCESSING..."
+                  : isPlaying
+                  ? "🔊 LISTENING..."
+                  : "✅ SUBMIT ANSWER"}
               </button>
             )}
 
@@ -421,7 +538,9 @@ export default function TOEICPractice() {
                   ></div>
                 </div>
                 <p className="text-cyan-300 font-mono text-sm">
-                  {currentQuestionIndex < questions.length - 1
+                  {isPlaying
+                    ? "Playing audio..."
+                    : currentQuestionIndex < questions.length - 1
                     ? "Loading next question..."
                     : "Calculating final score..."}
                 </p>
