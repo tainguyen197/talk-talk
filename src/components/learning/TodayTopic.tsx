@@ -155,6 +155,37 @@ export default function TodayTopic() {
             </button>
           </div>
         )}
+
+        <div className="w-full bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900 dark:to-blue-900 rounded-lg shadow-md p-6 border-2 border-purple-200 dark:border-purple-700">
+          <div className="flex items-center mb-3">
+            <span className="text-2xl mr-2">🎯</span>
+            <h2 className="text-xl font-semibold text-purple-600 dark:text-purple-400">
+              TOEIC Practice (B2)
+            </h2>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            Test your English with AI-generated TOEIC practice questions. 10
+            multiple-choice questions focusing on grammar, vocabulary, and
+            sentence structure at B2 level.
+          </p>
+          <div className="flex flex-wrap gap-2 mb-4">
+            <span className="px-2 py-1 bg-purple-100 dark:bg-purple-800 text-purple-700 dark:text-purple-300 rounded-full text-xs">
+              🤖 AI-Generated
+            </span>
+            <span className="px-2 py-1 bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300 rounded-full text-xs">
+              📝 Detailed Feedback
+            </span>
+            <span className="px-2 py-1 bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-300 rounded-full text-xs">
+              🕹️ Retro Gaming
+            </span>
+          </div>
+          <button
+            onClick={() => router.push("/toeic-practice")}
+            className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors"
+          >
+            Start TOEIC Practice
+          </button>
+        </div>
       </div>
     </div>
   );
