@@ -290,7 +290,7 @@ export default function TOEICPractice() {
         <RetroBackground />
         <Header />
         <main className="flex-1 flex items-center justify-center relative z-10">
-          <div className=" border-cyan-400 rounded-lg p-10 text-center animate-fade-in">
+          <div className=" border-cyan-400 rounded-lg p-6 text-center animate-fade-in">
             <h1 className="text-3xl font-mono text-green-300 mb-4">
               Questions are ready!
             </h1>

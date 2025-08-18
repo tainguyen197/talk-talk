@@ -67,21 +67,13 @@ export default function VoiceToggle({ onVoiceChange }: VoiceToggleProps) {
       {/* Voice Toggle Button with Icon */}
       <button
         onClick={toggleVoice}
-        className={`relative flex items-center justify-center h-8 w-8 rounded-full transition-all duration-300 transform hover:scale-110 focus:outline-none ${
-          isVoiceEnabled
-            ? "bg-gradient-to-r from-orange-500 to-red-500 shadow-lg shadow-orange-400/50"
-            : "bg-gray-700 hover:bg-gray-600"
+        className={`relative flex items-center justify-center h-8 w-8 transition-all duration-300  ${
+          isVoiceEnabled ? "" : "text-gray-300"
         }`}
         aria-label={isVoiceEnabled ? "Disable voice" : "Enable voice"}
       >
         {/* Voice Icon */}
-        <span
-          className={`text-base ${
-            isVoiceEnabled ? "text-white" : "text-gray-300"
-          }`}
-        >
-          {isVoiceEnabled ? "🔊" : "🔇"}
-        </span>
+        <span className={`text-base`}>{isVoiceEnabled ? "🔊" : "🔇"}</span>
 
         {/* Fire particles when enabled */}
         {isVoiceEnabled && (
@@ -99,9 +91,7 @@ export default function VoiceToggle({ onVoiceChange }: VoiceToggleProps) {
         )}
 
         {/* Glowing ring effect when enabled */}
-        {isVoiceEnabled && (
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-orange-400 to-red-400 opacity-20 animate-pulse"></div>
-        )}
+        {isVoiceEnabled && <div className="absolute inset-0 "></div>}
       </button>
 
       {/* Voice Status Text (Desktop only) */}

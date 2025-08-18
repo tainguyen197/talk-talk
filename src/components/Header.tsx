@@ -36,35 +36,6 @@ export default function Header() {
       <div className="max-w-4xl mx-auto p-4 flex justify-between items-center">
         {/* Retro Gaming Logo & Title */}
         <div className="flex items-center space-x-3">
-          {/* Animated Fire Icon */}
-          <div className="relative">
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 via-red-500 to-yellow-500 rounded-full flex items-center justify-center shadow-lg shadow-orange-400/50 animate-pulse">
-              <div className="relative">
-                {/* Fire emoji with glow effect */}
-                <span
-                  className="text-2xl drop-shadow-lg animate-bounce"
-                  style={{ animationDuration: "2s" }}
-                >
-                  🔥
-                </span>
-                {/* Fire particles effect */}
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-300 rounded-full animate-ping opacity-70"></div>
-                <div
-                  className="absolute -bottom-1 -left-1 w-1.5 h-1.5 bg-orange-400 rounded-full animate-ping opacity-80"
-                  style={{ animationDelay: "0.5s" }}
-                ></div>
-                <div
-                  className="absolute top-0 -right-2 w-1 h-1 bg-red-400 rounded-full animate-ping opacity-60"
-                  style={{ animationDelay: "1s" }}
-                ></div>
-              </div>
-            </div>
-            {/* Glowing ring effect */}
-            <div className="absolute inset-0 w-12 h-12 bg-gradient-to-br from-orange-500 via-red-500 to-yellow-500 rounded-full opacity-20 animate-ping"></div>
-            {/* Fire glow effect */}
-            <div className="absolute inset-0 w-12 h-12 bg-gradient-to-br from-orange-400 to-red-400 rounded-full opacity-10 animate-pulse"></div>
-          </div>
-
           {/* Retro Gaming Title */}
           <Link href="/" className="group">
             <div className="relative">
