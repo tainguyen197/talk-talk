@@ -172,22 +172,25 @@ export default function TOEICPractice() {
     // Speak the explanation
     await speakFeedback(currentQuestion.explanation, isCorrect);
 
-    // Show explanation for 3 seconds, then move to next question
-    if (currentQuestionIndex < questions.length - 1) {
-      // await speakProgress(currentQuestionIndex + 2, questions.length);
-
-      setCurrentQuestionIndex((prev) => prev + 1);
-      setSelectedAnswer(null);
-      setShowExplanation(false);
-      setQuestionStartTime(Date.now());
-    } else {
-      setTestCompleted(true);
-      updateStreak();
-    }
+    // Do not auto-advance; wait for user to click Next
     setIsLoading(false);
 
     // Hide particles after animation
     setTimeout(() => setShowParticles(false), 2000);
+  };
+
+  const handleNextQuestion = async () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex((prev) => prev + 1);
+      setSelectedAnswer(null);
+      setShowExplanation(false);
+      setQuestionStartTime(Date.now());
+      // Optionally announce progress
+      // await speakProgress(currentQuestionIndex + 2, questions.length);
+    } else {
+      setTestCompleted(true);
+      updateStreak();
+    }
   };
 
   const updateStreak = () => {
@@ -241,7 +244,7 @@ export default function TOEICPractice() {
       <div className="flex flex-col min-h-screen relative overflow-hidden">
         <RetroBackground />
         <Header />
-        <main className="flex-1 flex items-center justify-center relative z-10">
+        <main className="flex-1 flex items-center justify-center relative z-10 transition-all duration-300 animate-pulse ">
           <div className=" rounded-lg p-8">
             <div className="text-center">
               <div className="flex justify-center space-x-2 mb-6">
@@ -398,9 +401,6 @@ export default function TOEICPractice() {
       >
         💡
       </div>
-      <div className="absolute top-60 left-20 text-2xl animate-retro-rotate">
-        🌟
-      </div>
       <div
         className="absolute bottom-60 right-20 text-2xl animate-pulse"
         style={{ animationDuration: "2s" }}
@@ -441,7 +441,7 @@ export default function TOEICPractice() {
 
         {/* Question Content */}
         {currentQuestion && (
-          <div className="flex-1 border-purple-400 rounded-lg shadow-2xl shadow-purple-400/50 p-8 transform transition-transform duration-300 animate-scale-in">
+          <div className="flex-1  p-8 transform transition-transform duration-300 animate-scale-in">
             <div className="mb-8">
               <div className="flex items-center justify-between mb-6">
                 <span className="text-md font-mono text-purple-300 bg-purple-900/50 backdrop-blur-sm px-4 py-2 rounded-full border border-purple-400 animate-pulse">
@@ -500,37 +500,15 @@ export default function TOEICPractice() {
             </div>
 
             {showExplanation && (
-              <div className="bg-blue-900/80 backdrop-blur-sm border-2 border-blue-400 rounded-lg p-6 mb-6 shadow-2xl shadow-blue-400/50 animate-fade-in">
-                <div className="flex items-start">
-                  <h3 className="text-xl font-mono text-blue-300 mb-4 flex items-center">
-                    💡 EXPLANATION
-                  </h3>
-
-                  {/* Listen Again Button for Explanation */}
-                  {isVoiceEnabled && (
-                    <button
-                      onClick={() =>
-                        speakFeedback(
-                          currentQuestion.explanation,
-                          selectedAnswer === currentQuestion.correctAnswer
-                        )
-                      }
-                      disabled={isPlaying}
-                      className={`ml-4 p-2 rounded-full transition-all transform hover:scale-110 ${
-                        isPlaying
-                          ? "bg-gray-700 text-gray-400"
-                          : "bg-blue-800/50 text-blue-300 hover:bg-blue-700/50"
-                      }`}
-                      title="Listen to explanation again"
-                    >
-                      <span className="text-lg">🔊</span>
-                    </button>
-                  )}
-                </div>
-                <p className="text-blue-100 font-mono text-lg leading-relaxed">
-                  {currentQuestion.explanation}
-                </p>
-              </div>
+              <button
+                onClick={handleNextQuestion}
+                disabled={isLoading || isPlaying}
+                className="w-full py-6 px-8 bg-cyan-800/80 backdrop-blur-sm border-2 border-cyan-400 hover:bg-cyan-700/80 disabled:bg-gray-800/80 disabled:border-gray-600 text-cyan-100 disabled:text-gray-400 font-mono font-bold rounded-lg transition-all transform hover:scale-105 shadow-2xl shadow-cyan-400/30 hover:shadow-cyan-400/50 text-xl"
+              >
+                {currentQuestionIndex < questions.length - 1
+                  ? "NEXT QUESTION"
+                  : "SEE RESULTS"}
+              </button>
             )}
 
             {!showExplanation && (
@@ -547,25 +525,17 @@ export default function TOEICPractice() {
               </button>
             )}
 
-            {isLoading && showExplanation && (
-              <div className="text-center py-6">
-                <div className="flex justify-center space-x-2 mb-4">
-                  <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce"></div>
-                  <div
-                    className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce"
-                    style={{ animationDelay: "0.1s" }}
-                  ></div>
-                  <div
-                    className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce"
-                    style={{ animationDelay: "0.2s" }}
-                  ></div>
+            {showExplanation && (
+              <div className="bg-blue-900/80 backdrop-blur-sm border-2 border-blue-400 rounded-lg p-2 mt-4 text-balance shadow-2xl shadow-blue-400/50 animate-fade-in">
+                <div className="flex items-start">
+                  <h3 className="text-lg font-mono text-blue-300 mb-4 flex items-center">
+                    💡 explanation
+                  </h3>
+
+                  {/* Listen Again Button for Explanation */}
                 </div>
-                <p className="text-cyan-300 font-mono text-lg">
-                  {isPlaying
-                    ? "Playing audio..."
-                    : currentQuestionIndex < questions.length - 1
-                    ? "Loading next question..."
-                    : "Calculating final score..."}
+                <p className="text-blue-100 font-mono text-lg leading-relaxed">
+                  {currentQuestion.explanation}
                 </p>
               </div>
             )}

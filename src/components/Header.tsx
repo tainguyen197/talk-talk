@@ -32,7 +32,7 @@ export default function Header() {
   ];
 
   return (
-    <header className="bg-white dark:bg-gray-900 shadow relative z-50">
+    <header className="bg-white dark:bg-gray-900/40 shadow relative z-50">
       <div className="max-w-4xl mx-auto p-4 flex justify-between items-center">
         {/* Retro Gaming Logo & Title */}
         <div className="flex items-center space-x-3">
