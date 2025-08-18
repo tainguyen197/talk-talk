@@ -54,21 +54,10 @@ export default function TOEICPractice() {
     if (questions.length > 0 && !isGeneratingQuestions && !testCompleted) {
       const currentQuestion = questions[currentQuestionIndex];
       if (currentQuestion) {
-        // Add a small delay to ensure the UI has updated
-        const timer = setTimeout(() => {
-          speakQuestion(currentQuestion.question, currentQuestionIndex + 1);
-        }, 500);
-
-        return () => clearTimeout(timer);
+        speakQuestion(currentQuestion.question, currentQuestionIndex + 1);
       }
     }
-  }, [
-    currentQuestionIndex,
-    questions,
-    isGeneratingQuestions,
-    testCompleted,
-    speakQuestion,
-  ]);
+  }, [currentQuestionIndex, questions, isGeneratingQuestions, testCompleted]);
 
   // Speak the test results when completed
   useEffect(() => {
@@ -146,7 +135,7 @@ export default function TOEICPractice() {
     setSelectedAnswer(answerIndex);
   };
 
-  const handleSubmitAnswer = () => {
+  const handleSubmitAnswer = async () => {
     if (selectedAnswer === null) return;
 
     const currentQuestion = questions[currentQuestionIndex];
@@ -170,24 +159,21 @@ export default function TOEICPractice() {
     setIsLoading(true);
 
     // Speak the explanation
-    speakFeedback(currentQuestion.explanation, isCorrect);
+    await speakFeedback(currentQuestion.explanation, isCorrect);
 
     // Show explanation for 3 seconds, then move to next question
-    setTimeout(() => {
-      if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex((prev) => prev + 1);
-        setSelectedAnswer(null);
-        setShowExplanation(false);
-        setQuestionStartTime(Date.now());
+    if (currentQuestionIndex < questions.length - 1) {
+      // await speakProgress(currentQuestionIndex + 2, questions.length);
 
-        // Announce progress
-        speakProgress(currentQuestionIndex + 2, questions.length);
-      } else {
-        setTestCompleted(true);
-        updateStreak();
-      }
-      setIsLoading(false);
-    }, 5000); // Increased to 5 seconds to allow for voice explanation
+      setCurrentQuestionIndex((prev) => prev + 1);
+      setSelectedAnswer(null);
+      setShowExplanation(false);
+      setQuestionStartTime(Date.now());
+    } else {
+      setTestCompleted(true);
+      updateStreak();
+    }
+    setIsLoading(false);
   };
 
   const updateStreak = () => {
@@ -436,10 +422,8 @@ export default function TOEICPractice() {
                   <button
                     onClick={() => speakQuestion(currentQuestion.question)}
                     disabled={isPlaying}
-                    className={`ml-2 p-1 rounded-full ${
-                      isPlaying
-                        ? "bg-gray-700 text-gray-400"
-                        : "bg-orange-900 text-orange-300 hover:bg-orange-800"
+                    className={`ml-2 p-1 ${
+                      isPlaying ? " text-gray-400" : " text-orange-300"
                     } transition-colors`}
                     title="Listen again"
                   >
@@ -493,10 +477,8 @@ export default function TOEICPractice() {
                         )
                       }
                       disabled={isPlaying}
-                      className={`ml-2 p-1 rounded-full ${
-                        isPlaying
-                          ? "bg-gray-700 text-gray-400"
-                          : "bg-blue-700 text-blue-300 hover:bg-blue-600"
+                      className={`ml-2 p-1 ${
+                        isPlaying ? " text-gray-400" : " text-blue-300"
                       } transition-colors`}
                       title="Listen to explanation again"
                     >

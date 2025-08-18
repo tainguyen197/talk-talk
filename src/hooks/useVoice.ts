@@ -15,7 +15,8 @@ export const useVoice = () => {
   }, []);
 
   const speakText = async (text: string) => {
-    if (!isVoiceEnabled || !text.trim()) return;
+    console.log("speaking text", text);
+    if (!isVoiceEnabled || !text.trim() || isPlaying) return;
 
     try {
       setIsPlaying(true);
@@ -33,17 +34,17 @@ export const useVoice = () => {
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
 
-        audio.onended = () => {
-          setIsPlaying(false);
-          URL.revokeObjectURL(audioUrl);
-        };
+        return new Promise((resolve) => {
+          audio.play().then(() => {
+            audio.onended = () => {
+              setIsPlaying(false);
+              URL.revokeObjectURL(audioUrl);
+              resolve(void 0);
+            };
 
-        audio.onerror = () => {
-          setIsPlaying(false);
-          URL.revokeObjectURL(audioUrl);
-        };
-
-        await audio.play();
+            audio.play();
+          });
+        });
       } else {
         setIsPlaying(false);
       }
