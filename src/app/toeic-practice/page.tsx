@@ -484,7 +484,7 @@ export default function TOEICPractice() {
 
         {/* Question Content */}
         {currentQuestion && (
-          <div className="flex-1  p-8 transform transition-transform duration-300 animate-scale-in">
+          <div className="flex-1 p-4 transform transition-transform duration-300 animate-scale-in">
             <div className="mb-8">
               <div className="flex items-center justify-between mb-6">
                 <span className="text-md font-mono text-purple-300 bg-purple-900/50 backdrop-blur-sm px-4 py-2 rounded-full border border-purple-400 animate-pulse">

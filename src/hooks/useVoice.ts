@@ -18,8 +18,23 @@ export const useVoice = () => {
     text: string,
     options?: { speed?: number; language?: string; voice?: string }
   ) => {
-    console.log("speaking text", text);
-    if (!isVoiceEnabled || !text.trim() || isPlaying) return;
+    // Prepare text for TTS: convert blanks like "______" to an audible cue
+    const prepareTextForTTS = (input: string): string => {
+      let output = input;
+      // Replace contiguous underscores (2 or more) with an audible cue
+      output = output.replace(/_{2,}/g, " blank ");
+      // Replace bracketed blanks like (____), [____], {____}
+      output = output.replace(/[\(\[\{]\s*_{2,}\s*[\)\]\}]/g, " blank ");
+      // Replace long dashes often used as blanks (---, —, –)
+      output = output.replace(/[—–]|-{3,}/g, " blank ");
+      // Collapse extra whitespace and fix spaces before punctuation
+      output = output.replace(/\s{2,}/g, " ").replace(/\s+([,.!?;:])/g, "$1");
+      return output.trim();
+    };
+
+    const prepared = prepareTextForTTS(text);
+    console.log("speaking text", prepared);
+    if (!isVoiceEnabled || !prepared.trim() || isPlaying) return;
 
     setIsPlaying(true);
 
@@ -28,7 +43,7 @@ export const useVoice = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text,
+          text: prepared,
           speed: options?.speed,
           language: options?.language,
           voice: options?.voice,
@@ -70,7 +85,7 @@ export const useVoice = () => {
       textToSpeak = `Question ${questionNumber}. ${question}`;
     }
 
-    await speakText(textToSpeak, { speed: 1.2 });
+    await speakText(textToSpeak, { speed: 1.0 });
   };
 
   const speakFeedback = async (feedback: string, isCorrect: boolean) => {
